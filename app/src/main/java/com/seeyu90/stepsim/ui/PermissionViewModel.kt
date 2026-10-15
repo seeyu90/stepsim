@@ -1,8 +1,12 @@
 package com.seeyu90.stepsim.ui
 
-import android.app.Application
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
 import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
+import com.seeyu90.stepsim.health.AndroidHealthConnectManager
 import com.seeyu90.stepsim.health.HealthConnectAvailability
 import com.seeyu90.stepsim.health.HealthConnectManager
 import kotlinx.coroutines.CancellationException
@@ -19,9 +23,7 @@ data class PermissionUiState(
     val refreshFailed: Boolean = false,
 )
 
-class PermissionViewModel(application: Application) : AndroidViewModel(application) {
-
-    private val manager = HealthConnectManager(application)
+class PermissionViewModel(private val manager: HealthConnectManager) : ViewModel() {
 
     private val _state = MutableStateFlow(PermissionUiState())
     val state: StateFlow<PermissionUiState> = _state.asStateFlow()
@@ -49,6 +51,14 @@ class PermissionViewModel(application: Application) : AndroidViewModel(applicati
                 throw e
             } catch (e: Exception) {
                 _state.value = _state.value.copy(checked = true, refreshFailed = true)
+            }
+        }
+    }
+
+    companion object {
+        val Factory: ViewModelProvider.Factory = viewModelFactory {
+            initializer {
+                PermissionViewModel(AndroidHealthConnectManager(checkNotNull(this[APPLICATION_KEY])))
             }
         }
     }
