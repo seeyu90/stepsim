@@ -131,6 +131,33 @@ class SimulatorViewModelTest {
     }
 
     @Test
+    fun `health connect unavailable is reported separately from permission`() = scope.runTest {
+        healthConnect.availability = HealthConnectAvailability.NEEDS_INSTALL
+        viewModel.refreshPermission()
+        runCurrent()
+
+        assertEquals(false, ui.healthConnectAvailable)
+        assertEquals(false, ui.permissionGranted)
+    }
+
+    @Test
+    fun `write failure rechecks availability`() = scope.runTest {
+        startSimulation()
+        assertEquals(true, ui.healthConnectAvailable)
+
+        healthConnect.availability = HealthConnectAvailability.NOT_SUPPORTED
+        writer.failWith = IllegalStateException("platform error")
+        advanceTimeBy(10_001)
+
+        assertEquals(SimulationStatus.FAILED, ui.status)
+        assertEquals(false, ui.healthConnectAvailable)
+        assertEquals(
+            FailureMessage.HEALTH_CONNECT_UNAVAILABLE,
+            failureMessageFor(ui.status, ui.simulation.failure, ui.permissionGranted, ui.healthConnectAvailable),
+        )
+    }
+
+    @Test
     fun `target input validation`() = scope.runTest {
         viewModel.refreshPermission()
 
@@ -163,8 +190,9 @@ private class FakeStepWriter : StepWriter {
 
 private class FakeHealthConnect : HealthConnectManager {
     var granted = true
+    var availability = HealthConnectAvailability.AVAILABLE
 
-    override fun availability() = HealthConnectAvailability.AVAILABLE
+    override fun availability() = availability
 
     override suspend fun grantedPermissions(): Set<String> = error("not used")
 

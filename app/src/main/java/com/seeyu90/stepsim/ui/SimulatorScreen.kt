@@ -3,7 +3,6 @@ package com.seeyu90.stepsim.ui
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
-import android.os.RemoteException
 import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -46,7 +45,6 @@ import com.seeyu90.stepsim.R
 import com.seeyu90.stepsim.simulator.Gait
 import com.seeyu90.stepsim.simulator.SimulationStatus
 import com.seeyu90.stepsim.simulator.StepSimulator
-import java.io.IOException
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -100,6 +98,9 @@ fun SimulatorScreen(
     ) {
         Text(stringResource(R.string.sim_title), style = MaterialTheme.typography.headlineSmall)
 
+        // 放在權限檢查之前：Health Connect 不可用時，失敗原因仍要顯示
+        FailureCard(state)
+
         when (state.permissionGranted) {
             null -> {
                 Text(stringResource(R.string.sim_checking_permission))
@@ -113,7 +114,6 @@ fun SimulatorScreen(
         }
 
         StatusLabel(state)
-        FailureCard(state)
         TargetSection(state, onEvent)
         GaitSection(state, onEvent)
         ProgressSection(state)
@@ -149,12 +149,16 @@ private fun StatusLabel(state: SimulatorUiState) {
 
 @Composable
 private fun FailureCard(state: SimulatorUiState) {
-    val status = state.status
-    if (status != SimulationStatus.FAILED && status != SimulationStatus.PERMISSION_REVOKED) return
     val failure = state.simulation.failure
+    val message = failureMessageFor(
+        status = state.status,
+        failure = failure,
+        permissionGranted = state.permissionGranted,
+        healthConnectAvailable = state.healthConnectAvailable,
+    ) ?: return
     WarningCard(
         title = stringResource(R.string.sim_failed_title, state.simulation.failedBatchNumber ?: 0),
-        body = stringResource(failureMessage(status, failure)) + "\n\n" +
+        body = stringResource(message.stringRes()) + "\n\n" +
             stringResource(R.string.sim_failed_retry_note),
         detail = failure?.let { stringResource(R.string.sim_failed_detail, technicalDetail(it)) },
     )
@@ -323,14 +327,15 @@ private fun ButtonPair(@StringRes primary: Int, primaryEvent: SimulatorEvent, on
     }
 }
 
-/** 主訊息用人話；技術細節另外以次要文字顯示。 */
+/** 主訊息用人話；技術細節另外以次要文字顯示。對應邏輯見 [failureMessageFor]。 */
 @StringRes
-private fun failureMessage(status: SimulationStatus, failure: Throwable?): Int = when {
-    status == SimulationStatus.PERMISSION_REVOKED -> R.string.sim_failed_permission_restored
-    failure is IOException -> R.string.sim_failed_io
-    failure is RemoteException -> R.string.sim_failed_remote
-    failure is IllegalStateException -> R.string.sim_failed_unavailable
-    else -> R.string.sim_failed_unknown
+private fun FailureMessage.stringRes(): Int = when (this) {
+    FailureMessage.PERMISSION_RESTORED -> R.string.sim_failed_permission_restored
+    FailureMessage.HEALTH_CONNECT_UNAVAILABLE -> R.string.sim_failed_unavailable
+    FailureMessage.RATE_LIMITED -> R.string.sim_failed_rate_limited
+    FailureMessage.IO -> R.string.sim_failed_io
+    FailureMessage.REMOTE -> R.string.sim_failed_remote
+    FailureMessage.GENERIC -> R.string.sim_failed_generic
 }
 
 private fun technicalDetail(failure: Throwable): String {

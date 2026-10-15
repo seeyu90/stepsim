@@ -17,3 +17,6 @@ interface StepWriter {
 
 /** 寫入因權限不足（例如被撤銷）而失敗時，[StepWriter] 應拋出此例外。 */
 class StepWritePermissionException(cause: Throwable? = null) : Exception(cause)
+
+/** 寫入因頻率限制而失敗時，[StepWriter] 應拋出此例外；simulator 視為一般可重試的失敗。 */
+class StepWriteRateLimitException(cause: Throwable? = null) : Exception(cause)

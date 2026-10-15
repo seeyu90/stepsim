@@ -21,6 +21,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -34,16 +37,28 @@ class SimulatorViewModel(
 
     private data class Form(val targetInput: String = "", val targetError: TargetInputError? = null)
 
+    /** null 代表尚在檢查。 */
+    private data class Access(val available: Boolean? = null, val granted: Boolean? = null)
+
     private val form = MutableStateFlow(Form())
-    private val permissionGranted = MutableStateFlow<Boolean?>(null)
+    private val access = MutableStateFlow(Access())
 
     val state: StateFlow<SimulatorUiState> =
-        combine(form, permissionGranted, simulator.state) { form, granted, simulation ->
-            SimulatorUiState(granted, form.targetInput, form.targetError, simulation)
+        combine(form, access, simulator.state) { form, access, simulation ->
+            SimulatorUiState(access.granted, access.available, form.targetInput, form.targetError, simulation)
         }.stateIn(viewModelScope, SharingStarted.Eagerly, SimulatorUiState())
 
     private var tickJob: Job? = null
     private var permissionJob: Job? = null
+
+    init {
+        // 寫入失敗時重新檢查可用性，失敗卡片才能正確顯示「Health Connect 無法使用」
+        viewModelScope.launch {
+            simulator.state.map { it.status }.distinctUntilChanged()
+                .filter { it == SimulationStatus.FAILED }
+                .collect { refreshPermission() }
+        }
+    }
 
     fun onEvent(event: SimulatorEvent) {
         when (event) {
@@ -69,9 +84,8 @@ class SimulatorViewModel(
         permissionJob?.cancel()
         permissionJob = viewModelScope.launch {
             try {
-                permissionGranted.value =
-                    healthConnect.availability() == HealthConnectAvailability.AVAILABLE &&
-                    healthConnect.hasAllPermissions()
+                val available = healthConnect.availability() == HealthConnectAvailability.AVAILABLE
+                access.value = Access(available = available, granted = available && healthConnect.hasAllPermissions())
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {

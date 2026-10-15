@@ -49,7 +49,8 @@
     <string name="sim_failed_io">裝置儲存空間讀寫發生問題，請稍後重試。</string>
     <string name="sim_failed_remote">暫時無法連線到 Health Connect，請稍後重試。</string>
     <string name="sim_failed_unavailable">Health Connect 目前無法使用，請確認已安裝並啟用。</string>
-    <string name="sim_failed_unknown">寫入時發生未預期的錯誤，請稍後重試。</string>
+    <string name="sim_failed_rate_limited">寫入太頻繁，請稍後重試。</string>
+    <string name="sim_failed_generic">寫入失敗，請稍後重試。</string>
     <string name="sim_failed_permission_restored">寫入時權限不足。已重新授權，可以按「重試」繼續。</string>
     <string name="sim_failed_detail">技術細節：%1$s</string>
     <string name="sim_action_start">開始模擬</string>

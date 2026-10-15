@@ -10,6 +10,8 @@ enum class TargetInputError { OUT_OF_RANGE }
 data class SimulatorUiState(
     /** null 代表尚在檢查。 */
     val permissionGranted: Boolean? = null,
+    /** getSdkStatus 是否為 AVAILABLE；null 代表尚在檢查。 */
+    val healthConnectAvailable: Boolean? = null,
     val targetInput: String = "",
     val targetError: TargetInputError? = null,
     val simulation: SimulationState = SimulationState(),

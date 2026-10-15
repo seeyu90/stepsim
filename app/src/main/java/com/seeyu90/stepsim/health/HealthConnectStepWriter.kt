@@ -1,11 +1,15 @@
 package com.seeyu90.stepsim.health
 
 import android.content.Context
+import android.health.connect.HealthConnectException
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.records.StepsRecord
 import androidx.health.connect.client.records.metadata.Metadata
 import com.seeyu90.stepsim.simulator.StepBatch
 import com.seeyu90.stepsim.simulator.StepWritePermissionException
+import com.seeyu90.stepsim.simulator.StepWriteRateLimitException
 import com.seeyu90.stepsim.simulator.StepWriter
 import java.time.Instant
 import java.time.ZoneId
@@ -41,7 +45,21 @@ class HealthConnectStepWriter(
             client.insertRecords(listOf(record))
         } catch (e: SecurityException) {
             throw StepWritePermissionException(e)
+        } catch (e: IllegalStateException) {
+            if (isRateLimited(e)) throw StepWriteRateLimitException(e)
+            throw e
         }
+    }
+
+    /**
+     * Android 14+ 由平台 Health Connect 處理時，connect-client 的
+     * HealthConnectClientUpsideDownImpl 會把平台的 HealthConnectException 經
+     * ExceptionConverter.kt 的 toKtException() 轉換；ERROR_RATE_LIMIT_EXCEEDED 沒有對應類別，
+     * 會成為 cause 為該平台例外的 IllegalStateException。Android 13 以下的行為未確認，不在此判斷。
+     */
+    private fun isRateLimited(e: IllegalStateException): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) return false
+        return Api34.isRateLimitError(e.cause)
     }
 
     private fun offsetAt(instant: Instant): ZoneOffset = zoneId.rules.getOffset(instant)
@@ -49,5 +67,12 @@ class HealthConnectStepWriter(
     private companion object {
         /** 固定版本：同一批重送時版本相同，HC 會忽略重送而非重複寫入。 */
         const val CLIENT_RECORD_VERSION = 1L
+    }
+
+    @RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
+    private object Api34 {
+        fun isRateLimitError(cause: Throwable?): Boolean =
+            cause is HealthConnectException &&
+                cause.errorCode == HealthConnectException.ERROR_RATE_LIMIT_EXCEEDED
     }
 }
