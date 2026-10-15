@@ -55,7 +55,9 @@ StepSim（package `com.seeyu90.stepsim`）是「Health Connect 開發與 QA 測�
 3. 階段 3：背景執行（Foreground Service）
 4. 階段 4：MVP 驗收
 
-**目前進度：階段 1 完成，下一步為階段 2。**
+**目前進度：**
+- 階段 1：程式與單元測試完成，授權視窗待裝置驗證
+- 階段 2：UI 與模擬邏輯完成（Preview＋單元測試），Health Connect 實際寫入待裝置驗證
 
 ## 驗收與進度
 - 「階段 N 完成」只在使用者手動驗收通過後才能寫入；程式碼寫完、測試通過都不算完成
