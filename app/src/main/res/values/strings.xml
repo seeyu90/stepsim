@@ -10,6 +10,7 @@
     <string name="availability_not_supported">此裝置不支援 Health Connect</string>
     <string name="action_request_permission">請求授權</string>
     <string name="action_re_request_permission">重新授權</string>
+    <string name="action_back_to_simulator">← 返回模擬</string>
     <string name="action_install_health_connect">前往安裝 / 更新 Health Connect</string>
     <string name="action_retry">重試</string>
     <string name="error_refresh_failed">無法讀取 Health Connect 狀態，請稍後再試</string>
