@@ -299,6 +299,25 @@ class StepSimulatorTest {
     }
 
     @Test
+    fun `failure count increments on every failure and is never reset`() = runTest {
+        startWith(10_000)
+        writer.failWith = IOException("disk")
+        advanceAndTick(10.0)
+        assertEquals(1, simulator.state.value.failureCount)
+
+        simulator.retry() // 同狀態再失敗
+        assertEquals(SimulationStatus.FAILED, status)
+        assertEquals(2, simulator.state.value.failureCount)
+
+        writer.failWith = null
+        simulator.retry()
+        assertEquals("retry success keeps count", 2, simulator.state.value.failureCount)
+
+        simulator.reset()
+        assertEquals("reset keeps count", 2, simulator.state.value.failureCount)
+    }
+
+    @Test
     fun `retry that fails again stays failed`() = runTest {
         startWith(10_000)
         writer.failWith = IOException("disk")

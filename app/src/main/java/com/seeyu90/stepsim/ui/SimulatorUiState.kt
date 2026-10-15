@@ -18,6 +18,9 @@ data class SimulatorUiState(
 ) {
     val status: SimulationStatus get() = simulation.status
 
+    val isFailed: Boolean
+        get() = status == SimulationStatus.FAILED || status == SimulationStatus.PERMISSION_REVOKED
+
     /** 目標與步態只能在尚未開始時修改；步態另外可在暫停時修改。 */
     val canEditTarget: Boolean
         get() = status == SimulationStatus.IDLE || status == SimulationStatus.READY

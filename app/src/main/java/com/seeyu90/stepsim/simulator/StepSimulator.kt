@@ -137,6 +137,7 @@ class StepSimulator(
                 status = if (it.targetSteps == null) SimulationStatus.IDLE else SimulationStatus.READY,
                 targetSteps = it.targetSteps,
                 gait = it.gait,
+                failureCount = it.failureCount,
             )
         }
     }
@@ -207,6 +208,7 @@ class StepSimulator(
                     },
                     failedBatchNumber = it.batchCount + 1,
                     failure = e,
+                    failureCount = it.failureCount + 1,
                 )
             }
             false

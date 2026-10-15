@@ -30,4 +30,6 @@ data class SimulationState(
     /** 失敗的是第幾批（從 1 起算），僅 FAILED / PERMISSION_REVOKED 時有值。 */
     val failedBatchNumber: Int? = null,
     val failure: Throwable? = null,
+    /** 累計寫入失敗次數；每次失敗 +1，重試成功與重設都不歸零，供外部偵測「又發生一次失敗」。 */
+    val failureCount: Int = 0,
 )

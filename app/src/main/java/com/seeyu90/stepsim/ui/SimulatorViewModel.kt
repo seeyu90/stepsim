@@ -22,7 +22,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -52,11 +52,11 @@ class SimulatorViewModel(
     private var permissionJob: Job? = null
 
     init {
-        // 寫入失敗或權限被撤銷時重新檢查可用性與權限，畫面才能顯示正確的失敗原因與授權提示
+        // 每發生一次寫入失敗（不論狀態是否改變）就重新檢查可用性與權限，
+        // 畫面才能顯示正確的失敗原因與授權提示
         viewModelScope.launch {
-            simulator.state.map { it.status }.distinctUntilChanged()
-                .filter { it == SimulationStatus.FAILED || it == SimulationStatus.PERMISSION_REVOKED }
-                .collect { refreshPermission() }
+            simulator.state.map { it.failureCount }.distinctUntilChanged().drop(1)
+                .collect { onWriteFailed() }
         }
     }
 
@@ -69,7 +69,10 @@ class SimulatorViewModel(
             SimulatorEvent.Pause -> act { simulator.pause() }
             SimulatorEvent.Resume -> act { simulator.resume() }
             SimulatorEvent.Retry -> act { simulator.retry() }
-            SimulatorEvent.Reset -> act { simulator.reset() }
+            SimulatorEvent.Reset -> act {
+                simulator.reset()
+                refreshPermission()
+            }
             SimulatorEvent.OpenPermission -> Unit // 由畫面處理導覽
         }
     }
@@ -78,6 +81,12 @@ class SimulatorViewModel(
     fun onAppStopped(isChangingConfigurations: Boolean) {
         if (isChangingConfigurations) return
         act { simulator.pause() }
+    }
+
+    /** 失敗當下權限狀態已不可信：先設為未知，待重新檢查完成才更新。 */
+    private fun onWriteFailed() {
+        access.update { it.copy(granted = null) }
+        refreshPermission()
     }
 
     fun refreshPermission() {
@@ -89,7 +98,8 @@ class SimulatorViewModel(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                // 讀取失敗時維持原狀態，由授權頁處理 Health Connect 不可用的情況
+                // 檢查本身失敗：權限維持未知，不保留可能已過時的舊值
+                access.update { it.copy(granted = null) }
             }
         }
     }

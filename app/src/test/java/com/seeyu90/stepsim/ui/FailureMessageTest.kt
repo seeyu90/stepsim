@@ -53,6 +53,11 @@ class FailureMessageTest {
             FailureMessage.PERMISSION_RESTORED,
             failureMessageFor(SimulationStatus.PERMISSION_REVOKED, failure, permissionGranted = true, healthConnectAvailable = true),
         )
+        assertEquals(
+            "unknown permission is not shown as restored",
+            FailureMessage.PERMISSION_UNCONFIRMED,
+            failureMessageFor(SimulationStatus.PERMISSION_REVOKED, failure, permissionGranted = null, healthConnectAvailable = true),
+        )
         assertNull(
             failureMessageFor(SimulationStatus.PERMISSION_REVOKED, failure, permissionGranted = false, healthConnectAvailable = true),
         )

@@ -102,7 +102,8 @@ fun SimulatorScreen(
         FailureCard(state)
 
         when (state.permissionGranted) {
-            null -> {
+            null -> if (!state.isFailed) {
+                // 失敗時不擋：權限未知仍要能按「重試」與「結束並重設」
                 Text(stringResource(R.string.sim_checking_permission))
                 return@Column
             }
@@ -331,6 +332,7 @@ private fun ButtonPair(@StringRes primary: Int, primaryEvent: SimulatorEvent, on
 @StringRes
 private fun FailureMessage.stringRes(): Int = when (this) {
     FailureMessage.PERMISSION_RESTORED -> R.string.sim_failed_permission_restored
+    FailureMessage.PERMISSION_UNCONFIRMED -> R.string.sim_failed_permission_unconfirmed
     FailureMessage.HEALTH_CONNECT_UNAVAILABLE -> R.string.sim_failed_unavailable
     FailureMessage.RATE_LIMITED -> R.string.sim_failed_rate_limited
     FailureMessage.IO -> R.string.sim_failed_io

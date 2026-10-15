@@ -11,6 +11,7 @@ import com.seeyu90.stepsim.simulator.StepWritePermissionException
 import com.seeyu90.stepsim.simulator.StepWriter
 import java.io.IOException
 import java.time.Instant
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -172,6 +173,69 @@ class SimulatorViewModelTest {
     }
 
     @Test
+    fun `repeated failure with the same status rechecks permission`() = scope.runTest {
+        startSimulation()
+        writer.failWith = IOException("disk")
+        advanceTimeBy(10_001)
+        runCurrent()
+        assertEquals(SimulationStatus.FAILED, ui.status)
+        val calls = healthConnect.hasAllPermissionsCalls
+
+        viewModel.onEvent(SimulatorEvent.Retry) // 重試又失敗，狀態仍是 FAILED
+        runCurrent()
+
+        assertEquals(SimulationStatus.FAILED, ui.status)
+        assertEquals(calls + 1, healthConnect.hasAllPermissionsCalls)
+    }
+
+    @Test
+    fun `permission restored is not shown before the recheck completes`() = scope.runTest {
+        startSimulation()
+        assertEquals(true, ui.permissionGranted)
+
+        val check = CompletableDeferred<Boolean>()
+        healthConnect.hasAllPermissionsHandler = { check.await() }
+        writer.failWith = StepWritePermissionException(SecurityException("revoked"))
+        advanceTimeBy(10_001)
+        runCurrent()
+
+        assertEquals(SimulationStatus.PERMISSION_REVOKED, ui.status)
+        assertNull("permission is unknown while checking", ui.permissionGranted)
+        assertEquals(FailureMessage.PERMISSION_UNCONFIRMED, currentFailureMessage())
+
+        check.complete(true)
+        runCurrent()
+        assertEquals(FailureMessage.PERMISSION_RESTORED, currentFailureMessage())
+    }
+
+    @Test
+    fun `failed permission check does not keep the stale value`() = scope.runTest {
+        startSimulation()
+        assertEquals(true, ui.permissionGranted)
+
+        healthConnect.hasAllPermissionsHandler = { throw IllegalStateException("service unbound") }
+        viewModel.refreshPermission()
+        runCurrent()
+
+        assertNull(ui.permissionGranted)
+    }
+
+    @Test
+    fun `reset rechecks permission`() = scope.runTest {
+        startSimulation()
+        val calls = healthConnect.hasAllPermissionsCalls
+
+        viewModel.onEvent(SimulatorEvent.Reset)
+        runCurrent()
+
+        assertEquals(SimulationStatus.READY, ui.status)
+        assertEquals(calls + 1, healthConnect.hasAllPermissionsCalls)
+    }
+
+    private fun currentFailureMessage() =
+        failureMessageFor(ui.status, ui.simulation.failure, ui.permissionGranted, ui.healthConnectAvailable)
+
+    @Test
     fun `clearing a valid target disables start`() = scope.runTest {
         viewModel.refreshPermission()
         viewModel.onEvent(SimulatorEvent.TargetInputChanged("5000"))
@@ -241,11 +305,20 @@ private class FakeHealthConnect : HealthConnectManager {
     var granted = true
     var availability = HealthConnectAvailability.AVAILABLE
 
+    /** 預設回傳 [granted]；測試可替換成暫停或拋例外。 */
+    var hasAllPermissionsHandler: suspend () -> Boolean = { granted }
+
+    var hasAllPermissionsCalls = 0
+        private set
+
     override fun availability() = availability
 
     override suspend fun grantedPermissions(): Set<String> = error("not used")
 
-    override suspend fun hasAllPermissions(): Boolean = granted
+    override suspend fun hasAllPermissions(): Boolean {
+        hasAllPermissionsCalls++
+        return hasAllPermissionsHandler()
+    }
 
     override fun createPermissionRequestContract(): ActivityResultContract<Set<String>, Set<String>> =
         error("not used")
