@@ -273,6 +273,32 @@ class StepSimulatorTest {
     }
 
     @Test
+    fun `failure during pause flush stays paused after successful retry`() = runTest {
+        startWith(10_000)
+        advanceAndTick(10.0)
+
+        time.advance(5.0)
+        writer.failWith = IOException("disk")
+        simulator.pause() // 補寫 [10s, 15s) 失敗
+        assertEquals(SimulationStatus.FAILED, status)
+
+        writer.failWith = null
+        time.advance(30.0)
+        simulator.retry()
+        assertEquals(SimulationStatus.PAUSED, status)
+        assertEquals(t0.plusSeconds(15), writer.written.last().end)
+
+        val attempts = writer.attempts.size
+        advanceAndTick(60.0)
+        assertEquals("paused after retry: ticks write nothing", attempts, writer.attempts.size)
+
+        val resumedAt = time.now()
+        simulator.resume()
+        advanceAndTick(10.0)
+        assertEquals(resumedAt, writer.written.last().start)
+    }
+
+    @Test
     fun `retry that fails again stays failed`() = runTest {
         startWith(10_000)
         writer.failWith = IOException("disk")

@@ -46,6 +46,9 @@ class StepSimulator(
     /** 寫入失敗、等待重試的一批。 */
     private var failed: PlannedBatch? = null
 
+    /** 失敗發生在暫停補寫時；重試成功後應回到暫停而非執行中。 */
+    private var failedWhilePausing = false
+
     private class PlannedBatch(val batch: StepBatch, val carryUnitsAfter: Long, val completes: Boolean)
 
     suspend fun setTarget(steps: Long) = mutex.withLock {
@@ -77,9 +80,15 @@ class StepSimulator(
     /** 暫停前先寫到暫停時刻；不滿 1 步的部分以餘數保留。 */
     suspend fun pause() = mutex.withLock {
         if (_state.value.status != SimulationStatus.RUNNING) return@withLock
-        if (!resendPending()) return@withLock
+        if (!resendPending()) {
+            failedWhilePausing = true
+            return@withLock
+        }
         val planned = planBatch(now(), keepFractionOnShortfall = true)
-        if (planned != null && !send(planned)) return@withLock
+        if (planned != null && !send(planned)) {
+            failedWhilePausing = true
+            return@withLock
+        }
         if (_state.value.status == SimulationStatus.RUNNING) {
             segmentStart = null
             _state.update { it.copy(status = SimulationStatus.PAUSED) }
@@ -93,7 +102,10 @@ class StepSimulator(
         _state.update { it.copy(status = SimulationStatus.RUNNING) }
     }
 
-    /** 以相同 clientRecordId 重送失敗的那一批；成功後從當下繼續，失敗期間不補寫。 */
+    /**
+     * 以相同 clientRecordId 重送失敗的那一批；失敗期間不補寫。
+     * 成功後從當下繼續；若失敗發生在暫停補寫時，則維持暫停，待使用者按「繼續」。
+     */
     suspend fun retry() = mutex.withLock {
         val status = _state.value.status
         if (status != SimulationStatus.FAILED && status != SimulationStatus.PERMISSION_REVOKED) return@withLock
@@ -101,7 +113,13 @@ class StepSimulator(
         if (!write(planned)) return@withLock
         failed = null
         commit(planned)
-        if (_state.value.status != SimulationStatus.COMPLETED) {
+        val wasPausing = failedWhilePausing
+        failedWhilePausing = false
+        if (_state.value.status == SimulationStatus.COMPLETED) return@withLock
+        if (wasPausing) {
+            segmentStart = null
+            _state.update { it.copy(status = SimulationStatus.PAUSED) }
+        } else {
             segmentStart = now()
             _state.update { it.copy(status = SimulationStatus.RUNNING) }
         }
@@ -113,6 +131,7 @@ class StepSimulator(
         carryUnits = 0L
         pending = null
         failed = null
+        failedWhilePausing = false
         _state.update {
             SimulationState(
                 status = if (it.targetSteps == null) SimulationStatus.IDLE else SimulationStatus.READY,
