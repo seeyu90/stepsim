@@ -22,7 +22,7 @@ StepSim（package `com.seeyu90.stepsim`）是「Health Connect 開發與 QA 測�
 .\gradlew.bat assembleDebug                 # 建置 debug APK
 .\gradlew.bat installDebug                  # 安裝到已連線的模擬器/裝置
 .\gradlew.bat testDebugUnitTest             # JVM 單元測試
-.\gradlew.bat testDebugUnitTest --tests "com.seeyu90.stepsim.ExampleUnitTest"   # 單一測試
+.\gradlew.bat testDebugUnitTest --tests "com.seeyu90.stepsim.ui.PermissionViewModelTest"   # 單一測試
 .\gradlew.bat connectedDebugAndroidTest     # instrumented 測試（需裝置）
 .\gradlew.bat lint
 ```
@@ -35,6 +35,16 @@ StepSim（package `com.seeyu90.stepsim`）是「Health Connect 開發與 QA 測�
 - Health Connect 相關程式碼**全部封裝在 `health/`**，其他套件不得直接使用 HC SDK 類別。
 - Health Connect API 以最新官方文件為準；編譯報錯先查文件再修，不要猜。
 - 依賴版本使用目前最新穩定版。
+- ViewModel 的依賴一律以建構子注入「介面」，搭配 ViewModelProvider.Factory，不引入 Hilt
+- 新增邏輯要附單元測試，fake 寫在測試檔內；修競態類 bug 時，測試必須驗證「拿掉修正會變紅」
+
+## 裝置與模擬器（Windows）
+- 安裝前先 `adb devices`，必須看到 `device` 才執行 installDebug；多台裝置時用 `adb -s <序號>`
+- 截圖不要用 `adb exec-out ... >` 重導向（PowerShell 會損壞 PNG），改用：
+  `adb shell screencap -p /sdcard/screen.png; adb pull /sdcard/screen.png .\tmp\screen.png`
+- UI 結構：`adb shell uiautomator dump /sdcard/ui.xml; adb pull /sdcard/ui.xml .\tmp\ui.xml`
+- 背景行為不能靠截圖判斷，看 `adb logcat`；階段 3 之後的背景行為必須用實機驗證
+- 檔案一律 UTF-8；PowerShell 讀中文檔用 `Get-Content -Encoding UTF8`
 
 ## 開發階段與範圍
 
@@ -45,4 +55,12 @@ StepSim（package `com.seeyu90.stepsim`）是「Health Connect 開發與 QA 測�
 3. 階段 3：背景執行（Foreground Service）
 4. 階段 4：MVP 驗收
 
-**目前進度：階段 1 進行中。**
+**目前進度：階段 1 完成，下一步為階段 2。**
+
+## 驗收與進度
+- 「階段 N 完成」只在使用者手動驗收通過後才能寫入；程式碼寫完、測試通過都不算完成
+- 一個 commit 只做一件事；清理與重構獨立 commit
+
+## 後續階段備忘（尚未實作，勿提前做）
+- 階段 2：只寫「已過去」的時間區間；區間連續且不重疊（重疊會讓步數重複計算）；以 Metadata 標明紀錄方式與來源
+- 階段 3：Manifest 需補 FOREGROUND_SERVICE_HEALTH、POST_NOTIFICATIONS，以及 service 的 foregroundServiceType="health"，細節以最新官方文件為準
