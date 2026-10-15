@@ -1,5 +1,8 @@
 package com.seeyu90.stepsim.ui
 
+import android.content.ActivityNotFoundException
+import android.content.Intent
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -34,8 +37,20 @@ fun PermissionScreen(
 
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.refresh() }
 
-    val launcher = rememberLauncherForActivityResult(remember { viewModel.permissionContract() }) {
+    fun startOrToast(intent: Intent, failureMessage: Int) {
+        try {
+            context.startActivity(intent)
+        } catch (_: ActivityNotFoundException) {
+            Toast.makeText(context, failureMessage, Toast.LENGTH_LONG).show()
+        }
+    }
+
+    val launcher = rememberLauncherForActivityResult(remember { viewModel.permissionContract() }) { granted ->
         viewModel.refresh()
+        // 被拒絕（或系統已不再顯示授權視窗）時，導向 Health Connect 設定頁手動授權
+        if (granted.isEmpty()) {
+            startOrToast(viewModel.settingsIntent(), R.string.toast_settings_failed)
+        }
     }
 
     Column(
@@ -47,7 +62,15 @@ fun PermissionScreen(
     ) {
         Text(stringResource(R.string.permission_title), style = MaterialTheme.typography.headlineSmall)
 
-        if (state.checked) {
+        if (state.refreshFailed) {
+            Text(
+                stringResource(R.string.error_refresh_failed),
+                color = MaterialTheme.colorScheme.error,
+            )
+            Button(onClick = { viewModel.refresh() }) {
+                Text(stringResource(R.string.action_retry))
+            }
+        } else if (state.checked) {
             Text(stringResource(availabilityText(state.availability)))
 
             when (state.availability) {
@@ -70,7 +93,7 @@ fun PermissionScreen(
 
                 HealthConnectAvailability.NEEDS_INSTALL,
                 HealthConnectAvailability.NEEDS_UPDATE -> {
-                    Button(onClick = { context.startActivity(viewModel.installIntent()) }) {
+                    Button(onClick = { startOrToast(viewModel.installIntent(), R.string.toast_install_failed) }) {
                         Text(stringResource(R.string.action_install_health_connect))
                     }
                 }

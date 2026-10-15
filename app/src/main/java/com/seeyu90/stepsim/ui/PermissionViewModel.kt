@@ -5,6 +5,8 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.seeyu90.stepsim.health.HealthConnectAvailability
 import com.seeyu90.stepsim.health.HealthConnectManager
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -14,6 +16,7 @@ data class PermissionUiState(
     val availability: HealthConnectAvailability = HealthConnectAvailability.NOT_SUPPORTED,
     val granted: Boolean = false,
     val checked: Boolean = false,
+    val refreshFailed: Boolean = false,
 )
 
 class PermissionViewModel(application: Application) : AndroidViewModel(application) {
@@ -29,13 +32,24 @@ class PermissionViewModel(application: Application) : AndroidViewModel(applicati
 
     fun installIntent() = manager.installIntent()
 
-    /** 重新查詢可用性與授權狀態（onResume、授權結果回來後都會呼叫）。 */
+    fun settingsIntent() = manager.settingsIntent()
+
+    private var refreshJob: Job? = null
+
+    /** 重新查詢可用性與授權狀態（onResume、授權結果回來後都會呼叫）；新的呼叫會取消尚未完成的前一次。 */
     fun refresh() {
-        viewModelScope.launch {
-            val availability = manager.availability()
-            val granted = availability == HealthConnectAvailability.AVAILABLE &&
-                manager.hasAllPermissions()
-            _state.value = PermissionUiState(availability, granted, checked = true)
+        refreshJob?.cancel()
+        refreshJob = viewModelScope.launch {
+            try {
+                val availability = manager.availability()
+                val granted = availability == HealthConnectAvailability.AVAILABLE &&
+                    manager.hasAllPermissions()
+                _state.value = PermissionUiState(availability, granted, checked = true)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _state.value = _state.value.copy(checked = true, refreshFailed = true)
+            }
         }
     }
 }

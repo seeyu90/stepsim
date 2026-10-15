@@ -11,6 +11,10 @@
     <string name="action_request_permission">請求授權</string>
     <string name="action_re_request_permission">重新授權</string>
     <string name="action_install_health_connect">前往安裝 / 更新 Health Connect</string>
+    <string name="action_retry">重試</string>
+    <string name="error_refresh_failed">無法讀取 Health Connect 狀態，請稍後再試</string>
+    <string name="toast_install_failed">無法開啟 Play Store，請手動安裝或更新 Health Connect</string>
+    <string name="toast_settings_failed">無法開啟 Health Connect 設定，請手動前往系統設定</string>
 
     <string name="rationale_title">為何需要步數權限</string>
     <string name="rationale_body">StepSim 是 Health Connect 開發與 QA 測試工具。讀取步數權限用於確認寫入結果，寫入步數權限用於產生模擬步數，以驗證其他健康類 App 的步數讀取功能。資料僅存在 Health Connect 中，不會上傳至任何伺服器。</string>

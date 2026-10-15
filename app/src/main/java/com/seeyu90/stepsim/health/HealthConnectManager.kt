@@ -44,6 +44,9 @@ class HealthConnectManager(context: Context) {
             putExtra("callerId", appContext.packageName)
         }
 
+    /** 開啟 Health Connect 設定頁，讓使用者手動管理本 App 的權限。 */
+    fun settingsIntent(): Intent = Intent(HealthConnectClient.ACTION_HEALTH_CONNECT_SETTINGS)
+
     private fun isProviderInstalled(): Boolean =
         try {
             appContext.packageManager.getPackageInfo(PROVIDER_PACKAGE, 0)
