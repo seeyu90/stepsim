@@ -1,0 +1,17 @@
+<resources>
+    <string name="app_name">StepSim</string>
+
+    <string name="permission_title">Health Connect 權限</string>
+    <string name="status_granted">已授權</string>
+    <string name="status_not_granted">未授權</string>
+    <string name="availability_available">Health Connect 可用</string>
+    <string name="availability_needs_install">尚未安裝 Health Connect</string>
+    <string name="availability_needs_update">Health Connect 需要更新</string>
+    <string name="availability_not_supported">此裝置不支援 Health Connect</string>
+    <string name="action_request_permission">請求授權</string>
+    <string name="action_re_request_permission">重新授權</string>
+    <string name="action_install_health_connect">前往安裝 / 更新 Health Connect</string>
+
+    <string name="rationale_title">為何需要步數權限</string>
+    <string name="rationale_body">StepSim 是 Health Connect 開發與 QA 測試工具。讀取步數權限用於確認寫入結果，寫入步數權限用於產生模擬步數，以驗證其他健康類 App 的步數讀取功能。資料僅存在 Health Connect 中，不會上傳至任何伺服器。</string>
+</resources>
