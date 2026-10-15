@@ -15,6 +15,7 @@ import java.time.Instant
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestResult
 import kotlinx.coroutines.test.TestScope
@@ -46,12 +47,17 @@ class SimulatorViewModelTest {
         dispatcher = dispatcher,
         tickIntervalMillis = 10_000,
     )
+    private val backgroundAvailable = MutableStateFlow(true)
     private lateinit var viewModel: SimulatorViewModel
 
     @Before
     fun setUp() {
         Dispatchers.setMain(dispatcher)
-        viewModel = SimulatorViewModel(controller = runner, healthConnect = healthConnect)
+        viewModel = SimulatorViewModel(
+            controller = runner,
+            healthConnect = healthConnect,
+            backgroundAvailable = backgroundAvailable,
+        )
     }
 
     /** 在測試本體內關閉 runner，計時迴圈不會留到 runTest 收尾。 */
@@ -91,30 +97,19 @@ class SimulatorViewModelTest {
         assertEquals(2, writer.written.size)
     }
 
-    @Test
-    fun `leaving foreground pauses and stops writing`() = vmTest {
-        startSimulation()
-        advanceTimeBy(10_001)
-
-        viewModel.onAppStopped(isChangingConfigurations = false)
-        runCurrent()
-        assertEquals(SimulationStatus.PAUSED, ui.status)
-
-        val writes = writer.written.size
-        advanceTimeBy(60_000)
-        assertEquals(writes, writer.written.size)
-    }
 
     @Test
-    fun `configuration change does not pause`() = vmTest {
+    fun `background unavailable is reflected in ui state`() = vmTest {
         startSimulation()
+        assertTrue(ui.backgroundAvailable)
+        assertFalse(ui.showBackgroundUnavailable)
 
-        viewModel.onAppStopped(isChangingConfigurations = true)
+        backgroundAvailable.value = false
         runCurrent()
-        assertEquals(SimulationStatus.RUNNING, ui.status)
 
-        advanceTimeBy(10_001)
-        assertEquals(1, writer.written.size)
+        assertFalse(ui.backgroundAvailable)
+        assertTrue(ui.showBackgroundUnavailable)
+        assertEquals("simulation keeps running", SimulationStatus.RUNNING, ui.status)
     }
 
     @Test

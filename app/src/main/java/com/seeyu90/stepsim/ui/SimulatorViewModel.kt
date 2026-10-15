@@ -34,6 +34,7 @@ import kotlinx.coroutines.launch
 class SimulatorViewModel(
     private val controller: SimulationController,
     private val healthConnect: HealthConnectManager,
+    backgroundAvailable: StateFlow<Boolean> = MutableStateFlow(true),
 ) : ViewModel() {
 
     private data class Form(val targetInput: String = "", val targetError: TargetInputError? = null)
@@ -45,8 +46,15 @@ class SimulatorViewModel(
     private val access = MutableStateFlow(Access())
 
     val state: StateFlow<SimulatorUiState> =
-        combine(form, access, controller.state) { form, access, simulation ->
-            SimulatorUiState(access.granted, access.available, form.targetInput, form.targetError, simulation)
+        combine(form, access, controller.state, backgroundAvailable) { form, access, simulation, background ->
+            SimulatorUiState(
+                permissionGranted = access.granted,
+                healthConnectAvailable = access.available,
+                targetInput = form.targetInput,
+                targetError = form.targetError,
+                simulation = simulation,
+                backgroundAvailable = background,
+            )
         }.stateIn(viewModelScope, SharingStarted.Eagerly, SimulatorUiState())
 
     private var permissionJob: Job? = null
@@ -72,12 +80,6 @@ class SimulatorViewModel(
             SimulatorEvent.Reset -> reset()
             SimulatorEvent.OpenPermission -> Unit // 由畫面處理導覽
         }
-    }
-
-    /** 畫面離開前景（含螢幕關閉）時暫停；旋轉等設定變更不暫停。 */
-    fun onAppStopped(isChangingConfigurations: Boolean) {
-        if (isChangingConfigurations) return
-        controller.pause()
     }
 
     /** 指令為非同步：等模擬確實回到 READY / IDLE 後再檢查一次權限。 */
@@ -133,6 +135,7 @@ class SimulatorViewModel(
                 SimulatorViewModel(
                     controller = app.simulation,
                     healthConnect = AndroidHealthConnectManager(app),
+                    backgroundAvailable = app.backgroundAvailability.available,
                 )
             }
         }

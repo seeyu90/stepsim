@@ -18,6 +18,8 @@ data class SimulatorUiState(
     val targetInput: String = "",
     val targetError: TargetInputError? = null,
     val simulation: SimulationState = SimulationState(),
+    /** 前景服務是否成功啟動；false 時離開 App 後模擬可能中斷。 */
+    val backgroundAvailable: Boolean = true,
 ) {
     val status: SimulationStatus get() = simulation.status
 
@@ -39,6 +41,10 @@ data class SimulatorUiState(
         }
 
     val showMainContent: Boolean get() = accessNotice == AccessNotice.NONE
+
+    /** 模擬進行中（含暫停、失敗）但前景服務無法啟動時，提示「無法在背景執行」。 */
+    val showBackgroundUnavailable: Boolean
+        get() = !backgroundAvailable && (status == SimulationStatus.RUNNING || status == SimulationStatus.PAUSED || isFailed)
 
     /** 失敗時一律能「結束並重設」：主要內容被提示取代時，另外單獨顯示重設按鈕。 */
     val showStandaloneReset: Boolean get() = isFailed && !showMainContent

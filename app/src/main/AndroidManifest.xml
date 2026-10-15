@@ -5,6 +5,17 @@
     <uses-permission android:name="android.permission.health.READ_STEPS" />
     <uses-permission android:name="android.permission.health.WRITE_STEPS" />
 
+    <!-- 背景執行：health 類型前景服務與常駐通知 -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_HEALTH" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!--
+        僅為滿足 health 類型前景服務的啟動前提（Android 14+ 須宣告此權限或取得指定的感測器／健康讀取權限之一）。
+        StepSim 不讀取任何感測器。此為一般權限，安裝時自動授予、使用者無法撤銷。
+        上架前（階段 10）改評估 specialUse 類型，詳見 CLAUDE.md。
+    -->
+    <uses-permission android:name="android.permission.HIGH_SAMPLING_RATE_SENSORS" />
+
     <queries>
         <package android:name="com.google.android.apps.healthdata" />
     </queries>
@@ -41,6 +52,11 @@
                 <action android:name="androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE" />
             </intent-filter>
         </activity>
+
+        <service
+            android:name=".service.SimulationService"
+            android:exported="false"
+            android:foregroundServiceType="health" />
 
         <!-- Android 14+：從 Health Connect 設定檢視權限用途 -->
         <activity-alias

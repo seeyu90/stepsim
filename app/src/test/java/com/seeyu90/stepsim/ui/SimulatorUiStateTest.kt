@@ -80,6 +80,22 @@ class SimulatorUiStateTest {
     }
 
     @Test
+    fun `background unavailable hint only while a simulation is in progress`() {
+        val inProgress = listOf(
+            SimulationStatus.RUNNING,
+            SimulationStatus.PAUSED,
+            SimulationStatus.FAILED,
+            SimulationStatus.PERMISSION_REVOKED,
+        )
+        for (status in SimulationStatus.entries) {
+            val ui = state(status, granted = true, available = true).copy(backgroundAvailable = false)
+            assertEquals("status $status", status in inProgress, ui.showBackgroundUnavailable)
+        }
+        val ok = state(SimulationStatus.RUNNING, granted = true, available = true)
+        assertFalse("available: no hint", ok.showBackgroundUnavailable)
+    }
+
+    @Test
     fun `granted and available shows main content`() {
         val ui = state(SimulationStatus.RUNNING, granted = true, available = true)
         assertEquals(AccessNotice.NONE, ui.accessNotice)

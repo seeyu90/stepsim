@@ -71,3 +71,6 @@ StepSim（package `com.seeyu90.stepsim`）是「Health Connect 開發與 QA 測�
 ## 後續階段備忘（尚未實作，勿提前做）
 - 階段 2：只寫「已過去」的時間區間；區間連續且不重疊（重疊會讓步數重複計算）；以 Metadata 標明紀錄方式與來源
 - 階段 3：Manifest 需補 FOREGROUND_SERVICE_HEALTH、POST_NOTIFICATIONS，以及 service 的 foregroundServiceType="health"，細節以最新官方文件為準
+
+## 決定紀錄
+- health 類型前景服務的啟動前提（Android 14+）：以在 Manifest 宣告 `HIGH_SAMPLING_RATE_SENSORS` 滿足（一般權限，安裝時自動授予、使用者無法撤銷）；App 不讀取任何感測器。Health Connect 的 READ_STEPS／WRITE_STEPS 不在前提清單內，不能用來滿足。備案：階段 10 上架前改評估 `specialUse` 類型（需在 Play Console 申報用途）。

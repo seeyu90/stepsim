@@ -1,8 +1,11 @@
 package com.seeyu90.stepsim.ui
 
-import android.app.Activity
+import android.Manifest
 import android.content.Context
-import android.content.ContextWrapper
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -27,16 +30,15 @@ import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -49,7 +51,7 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
-/** 接 ViewModel 的外層：負責權限檢查、離開前景暫停、執行中保持螢幕常亮。 */
+/** 接 ViewModel 的外層：負責權限檢查，以及開始前請求通知權限（Android 13+）。 */
 @Composable
 fun SimulatorRoute(
     onOpenPermission: () -> Unit,
@@ -62,25 +64,30 @@ fun SimulatorRoute(
     // 進入畫面（含從授權頁返回）與回到前景時重新檢查權限
     LaunchedEffect(Unit) { viewModel.refreshPermission() }
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.refreshPermission() }
-    LifecycleEventEffect(Lifecycle.Event.ON_STOP) {
-        viewModel.onAppStopped(context.findActivity()?.isChangingConfigurations == true)
-    }
 
-    val running = state.status == SimulationStatus.RUNNING
-    val view = LocalView.current
-    DisposableEffect(running) {
-        view.keepScreenOn = running
-        onDispose { view.keepScreenOn = false }
+    // 不論允許或拒絕都開始模擬：拒絕時前景服務照常執行，通知只出現在工作管理員
+    val notificationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
+        viewModel.onEvent(SimulatorEvent.Start)
     }
 
     SimulatorScreen(
         state = state,
         onEvent = { event ->
-            if (event == SimulatorEvent.OpenPermission) onOpenPermission() else viewModel.onEvent(event)
+            when {
+                event == SimulatorEvent.OpenPermission -> onOpenPermission()
+                event == SimulatorEvent.Start && needsNotificationPermission(context) ->
+                    notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+                else -> viewModel.onEvent(event)
+            }
         },
         modifier = modifier,
     )
 }
+
+private fun needsNotificationPermission(context: Context): Boolean =
+    Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+        ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
+        PackageManager.PERMISSION_GRANTED
 
 /** 無狀態畫面：只依 [state] 繪製，所有操作透過 [onEvent] 回傳。Preview 只使用這一層。 */
 @Composable
@@ -293,6 +300,13 @@ private fun ProgressSection(state: SimulatorUiState) {
             SimulationStatus.PAUSED -> InfoText(stringResource(R.string.sim_paused_hint))
             else -> Unit
         }
+        if (state.showBackgroundUnavailable) {
+            Text(
+                "⚠ " + stringResource(R.string.sim_background_unavailable),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.error,
+            )
+        }
     }
 }
 
@@ -361,9 +375,3 @@ private val timeFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:m
 private fun formatSteps(steps: Long): String = "%,d".format(steps)
 
 private fun formatTime(instant: Instant): String = timeFormatter.format(instant.atZone(ZoneId.systemDefault()))
-
-private tailrec fun Context.findActivity(): Activity? = when (this) {
-    is Activity -> this
-    is ContextWrapper -> baseContext.findActivity()
-    else -> null
-}
