@@ -366,6 +366,38 @@ class StepSimulatorTest {
     }
 
     @Test
+    fun `retry cancelled mid-write then retried successfully is not committed twice`() = runTest {
+        startWith(10_000)
+        writer.failWith = IOException("disk")
+        advanceAndTick(10.0) // 第 1 批失敗
+        assertEquals(SimulationStatus.FAILED, status)
+
+        // 重試時寫入被取消
+        writer.failWith = null
+        writer.blockNext = { awaitCancellation() }
+        val job = launch { simulator.retry() }
+        runCurrent()
+        job.cancel()
+        runCurrent()
+
+        // 再重試成功
+        time.advance(5.0)
+        val retriedAt = time.now()
+        simulator.retry()
+        assertEquals(SimulationStatus.RUNNING, status)
+        assertEquals(16L, simulator.state.value.writtenSteps)
+
+        val attemptsBeforeTick = writer.attempts.size
+        advanceAndTick(10.0)
+
+        val newAttempts = writer.attempts.drop(attemptsBeforeTick)
+        assertEquals("tick 不會重送已提交的批次", listOf("stepsim-test-2"), newAttempts.map { it.clientRecordId })
+        // 第 1 批 16 步（餘 0.67 步）+ 重試後 10 秒 17 步；若重複提交會再多 16 步
+        assertEquals("writtenSteps 不重複累加", 16L + 17L, simulator.state.value.writtenSteps)
+        assertEquals("下一批起點為重試成功時刻", retriedAt, writer.written.last().start)
+    }
+
+    @Test
     fun `pause during an in-flight write waits instead of writing an overlapping batch`() = runTest {
         startWith(10_000)
         time.advance(10.0)

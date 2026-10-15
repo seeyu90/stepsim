@@ -213,6 +213,9 @@ class StepSimulator(
         }
 
     private fun commit(planned: PlannedBatch) {
+        // 同一批可能同時被記為待重送與失敗（例如重試時寫入被取消），提交後兩者都要清掉，避免重複提交
+        if (pending === planned) pending = null
+        if (failed === planned) failed = null
         val batch = planned.batch
         carryUnits = planned.carryUnitsAfter
         segmentStart = batch.end
