@@ -52,10 +52,10 @@ class SimulatorViewModel(
     private var permissionJob: Job? = null
 
     init {
-        // 寫入失敗時重新檢查可用性，失敗卡片才能正確顯示「Health Connect 無法使用」
+        // 寫入失敗或權限被撤銷時重新檢查可用性與權限，畫面才能顯示正確的失敗原因與授權提示
         viewModelScope.launch {
             simulator.state.map { it.status }.distinctUntilChanged()
-                .filter { it == SimulationStatus.FAILED }
+                .filter { it == SimulationStatus.FAILED || it == SimulationStatus.PERMISSION_REVOKED }
                 .collect { refreshPermission() }
         }
     }

@@ -7,6 +7,7 @@ import com.seeyu90.stepsim.health.HealthConnectManager
 import com.seeyu90.stepsim.simulator.SimulationStatus
 import com.seeyu90.stepsim.simulator.StepBatch
 import com.seeyu90.stepsim.simulator.StepSimulator
+import com.seeyu90.stepsim.simulator.StepWritePermissionException
 import com.seeyu90.stepsim.simulator.StepWriter
 import java.io.IOException
 import java.time.Instant
@@ -155,6 +156,54 @@ class SimulatorViewModelTest {
             FailureMessage.HEALTH_CONNECT_UNAVAILABLE,
             failureMessageFor(ui.status, ui.simulation.failure, ui.permissionGranted, ui.healthConnectAvailable),
         )
+    }
+
+    @Test
+    fun `permission revoked during write rechecks permission`() = scope.runTest {
+        startSimulation()
+        assertEquals(true, ui.permissionGranted)
+
+        healthConnect.granted = false
+        writer.failWith = StepWritePermissionException(SecurityException("revoked"))
+        advanceTimeBy(10_001)
+
+        assertEquals(SimulationStatus.PERMISSION_REVOKED, ui.status)
+        assertEquals(false, ui.permissionGranted)
+    }
+
+    @Test
+    fun `clearing a valid target disables start`() = scope.runTest {
+        viewModel.refreshPermission()
+        viewModel.onEvent(SimulatorEvent.TargetInputChanged("5000"))
+        runCurrent()
+        assertTrue(ui.canStart)
+
+        viewModel.onEvent(SimulatorEvent.TargetInputChanged(""))
+        runCurrent()
+
+        assertNull(ui.targetError)
+        assertFalse(ui.canStart)
+        viewModel.onEvent(SimulatorEvent.Start)
+        runCurrent()
+        assertEquals("start is ignored", SimulationStatus.READY, ui.status)
+    }
+
+    @Test
+    fun `out of range target after a valid one disables start`() = scope.runTest {
+        viewModel.refreshPermission()
+        viewModel.onEvent(SimulatorEvent.TargetInputChanged("5000"))
+        runCurrent()
+        assertTrue(ui.canStart)
+
+        for (input in listOf("0", "100001")) {
+            viewModel.onEvent(SimulatorEvent.TargetInputChanged(input))
+            runCurrent()
+            assertEquals(TargetInputError.OUT_OF_RANGE, ui.targetError)
+            assertFalse("canStart for $input", ui.canStart)
+        }
+        viewModel.onEvent(SimulatorEvent.Start)
+        runCurrent()
+        assertEquals("start is ignored", SimulationStatus.READY, ui.status)
     }
 
     @Test
