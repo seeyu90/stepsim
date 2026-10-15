@@ -21,6 +21,8 @@
     <string name="sim_checking_permission">正在檢查 Health Connect 權限…</string>
     <string name="sim_permission_title">尚未授權寫入步數</string>
     <string name="sim_permission_body">需要 Health Connect 的步數讀寫權限才能開始模擬。</string>
+    <string name="sim_unavailable_title">Health Connect 目前無法使用</string>
+    <string name="sim_unavailable_body">請確認已安裝並啟用 Health Connect；授權頁提供安裝或更新的入口。</string>
     <string name="sim_action_open_permission">前往授權頁</string>
     <string name="sim_target_label">目標步數</string>
     <string name="sim_target_placeholder">輸入 1–100,000</string>

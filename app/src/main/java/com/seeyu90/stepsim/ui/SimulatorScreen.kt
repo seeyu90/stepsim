@@ -101,18 +101,27 @@ fun SimulatorScreen(
         // 放在權限檢查之前：Health Connect 不可用時，失敗原因仍要顯示
         FailureCard(state)
 
-        when (state.permissionGranted) {
-            null -> if (!state.isFailed) {
-                // 失敗時不擋：權限未知仍要能按「重試」與「結束並重設」
-                Text(stringResource(R.string.sim_checking_permission))
-                return@Column
-            }
-            false -> {
-                PermissionRequired(onOpenPermission = { onEvent(SimulatorEvent.OpenPermission) })
-                return@Column
-            }
-            true -> Unit
+        val openPermission = { onEvent(SimulatorEvent.OpenPermission) }
+        when (state.accessNotice) {
+            AccessNotice.CHECKING -> Text(stringResource(R.string.sim_checking_permission))
+            AccessNotice.HEALTH_CONNECT_UNAVAILABLE -> AccessRequired(
+                title = R.string.sim_unavailable_title,
+                body = R.string.sim_unavailable_body,
+                onOpenPermission = openPermission,
+            )
+            AccessNotice.PERMISSION_REQUIRED -> AccessRequired(
+                title = R.string.sim_permission_title,
+                body = R.string.sim_permission_body,
+                onOpenPermission = openPermission,
+            )
+            AccessNotice.NONE -> Unit
         }
+        if (state.showStandaloneReset) {
+            OutlinedButton(onClick = { onEvent(SimulatorEvent.Reset) }, modifier = Modifier.fillMaxWidth()) {
+                Text(stringResource(R.string.sim_action_reset))
+            }
+        }
+        if (!state.showMainContent) return@Column
 
         StatusLabel(state)
         TargetSection(state, onEvent)
@@ -123,10 +132,10 @@ fun SimulatorScreen(
 }
 
 @Composable
-private fun PermissionRequired(onOpenPermission: () -> Unit) {
+private fun AccessRequired(@StringRes title: Int, @StringRes body: Int, onOpenPermission: () -> Unit) {
     WarningCard(
-        title = stringResource(R.string.sim_permission_title),
-        body = stringResource(R.string.sim_permission_body),
+        title = stringResource(title),
+        body = stringResource(body),
     )
     Button(onClick = onOpenPermission, modifier = Modifier.fillMaxWidth()) {
         Text(stringResource(R.string.sim_action_open_permission))
