@@ -81,5 +81,5 @@
     <string name="notif_action_stop">結束本次模擬</string>
 
     <string name="rationale_title">為何需要步數權限</string>
-    <string name="rationale_body">StepSim 是 Health Connect 開發與 QA 測試工具。讀取步數權限用於確認寫入結果，寫入步數權限用於產生模擬步數，以驗證其他健康類 App 的步數讀取功能。資料僅存在 Health Connect 中，不會上傳至任何伺服器。</string>
+    <string name="rationale_body">StepSim 是 Health Connect 開發與 QA 測試工具。寫入步數權限用於產生模擬步數，以驗證其他健康類 App 的步數讀取功能。資料僅存在 Health Connect 中，不會上傳至任何伺服器。</string>
 </resources>
