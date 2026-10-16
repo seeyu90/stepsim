@@ -45,7 +45,8 @@
     <string name="sim_estimate_remaining">預計剩餘 約 %1$d 分鐘</string>
     <string name="sim_batches_last">已寫入 %1$d 批 · 最後寫入 %2$s</string>
     <string name="sim_batches_range">共寫入 %1$d 批 · %2$s – %3$s</string>
-    <string name="sim_foreground_hint">請保持 App 在前景；離開 App 或螢幕關閉都會自動暫停</string>
+    <string name="sim_foreground_hint">離開 App 後會在背景繼續，可從通知暫停或結束本次模擬。請直接回到主畫面離開，不要從最近使用清單滑掉 App，部分裝置會因此終止模擬</string>
+    <string name="sim_background_unavailable">無法在背景執行：離開 App 後模擬可能中斷，請保持 App 在前景</string>
     <string name="sim_paused_hint">暫停期間不寫入，繼續後從當下時間接續</string>
     <string name="sim_failed_title">寫入失敗（第 %1$d 批）</string>
     <string name="sim_failed_retry_note">已寫入的步數保留；重試會以相同紀錄 ID 重送同一批，不會重複計算。失敗期間的時間不補寫。</string>
@@ -63,6 +64,21 @@
     <string name="sim_action_retry">重試</string>
     <string name="sim_action_reset">結束並重設</string>
     <string name="sim_action_new">重新設定</string>
+
+    <!-- 前景服務通知 -->
+    <string name="notif_channel_name">步數模擬</string>
+    <string name="notif_title_starting">步數模擬</string>
+    <string name="notif_title_running">%1$s中 · %2$d 步/分</string>
+    <string name="notif_title_paused">已暫停</string>
+    <string name="notif_title_failed">寫入失敗（第 %1$d 批）</string>
+    <string name="notif_text_failed">請開啟 App 重試，或結束本次模擬</string>
+    <string name="notif_title_permission">寫入權限不足</string>
+    <string name="notif_text_permission">請開啟 App 重新授權後重試，或結束本次模擬</string>
+    <string name="notif_title_completed">模擬已完成</string>
+    <string name="notif_progress">%1$s / %2$s 步（%3$d%%）</string>
+    <string name="notif_action_pause">暫停</string>
+    <string name="notif_action_resume">繼續</string>
+    <string name="notif_action_stop">結束本次模擬</string>
 
     <string name="rationale_title">為何需要步數權限</string>
     <string name="rationale_body">StepSim 是 Health Connect 開發與 QA 測試工具。讀取步數權限用於確認寫入結果，寫入步數權限用於產生模擬步數，以驗證其他健康類 App 的步數讀取功能。資料僅存在 Health Connect 中，不會上傳至任何伺服器。</string>

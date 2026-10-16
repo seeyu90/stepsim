@@ -4,6 +4,7 @@ import android.content.Intent
 import androidx.activity.result.contract.ActivityResultContract
 import com.seeyu90.stepsim.health.HealthConnectAvailability
 import com.seeyu90.stepsim.health.HealthConnectManager
+import com.seeyu90.stepsim.simulator.SimulationRunner
 import com.seeyu90.stepsim.simulator.SimulationStatus
 import com.seeyu90.stepsim.simulator.StepBatch
 import com.seeyu90.stepsim.simulator.StepSimulator
@@ -14,7 +15,9 @@ import java.time.Instant
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestResult
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.resetMain
@@ -39,16 +42,31 @@ class SimulatorViewModelTest {
     private val time = { Instant.ofEpochMilli(dispatcher.scheduler.currentTime) }
     private val writer = FakeStepWriter()
     private val healthConnect = FakeHealthConnect()
+    private val runner = SimulationRunner(
+        simulator = StepSimulator(time, writer, sessionId = "vm"),
+        dispatcher = dispatcher,
+        tickIntervalMillis = 10_000,
+    )
+    private val backgroundAvailable = MutableStateFlow(true)
     private lateinit var viewModel: SimulatorViewModel
 
     @Before
     fun setUp() {
         Dispatchers.setMain(dispatcher)
         viewModel = SimulatorViewModel(
-            simulator = StepSimulator(time, writer, sessionId = "vm"),
+            controller = runner,
             healthConnect = healthConnect,
-            tickIntervalMillis = 10_000,
+            backgroundAvailable = backgroundAvailable,
         )
+    }
+
+    /** 在測試本體內關閉 runner，計時迴圈不會留到 runTest 收尾。 */
+    private fun vmTest(body: suspend TestScope.() -> Unit): TestResult = scope.runTest {
+        try {
+            body()
+        } finally {
+            runner.close()
+        }
     }
 
     @After
@@ -67,7 +85,7 @@ class SimulatorViewModelTest {
     private val ui get() = viewModel.state.value
 
     @Test
-    fun `ticks every interval and updates progress`() = scope.runTest {
+    fun `ui reflects progress from the controller`() = vmTest {
         startSimulation()
         assertEquals(SimulationStatus.RUNNING, ui.status)
 
@@ -79,9 +97,26 @@ class SimulatorViewModelTest {
         assertEquals(2, writer.written.size)
     }
 
+
     @Test
-    fun `leaving foreground pauses and stops writing`() = scope.runTest {
+    fun `background unavailable is reflected in ui state`() = vmTest {
         startSimulation()
+        assertTrue(ui.backgroundAvailable)
+        assertFalse(ui.showBackgroundUnavailable)
+
+        backgroundAvailable.value = false
+        runCurrent()
+
+        assertFalse(ui.backgroundAvailable)
+        assertTrue(ui.showBackgroundUnavailable)
+        assertEquals("simulation keeps running", SimulationStatus.RUNNING, ui.status)
+    }
+
+    @Test
+    fun `leaving the app pauses when the foreground service could not start`() = vmTest {
+        startSimulation()
+        backgroundAvailable.value = false
+        runCurrent()
         advanceTimeBy(10_001)
 
         viewModel.onAppStopped(isChangingConfigurations = false)
@@ -90,14 +125,14 @@ class SimulatorViewModelTest {
 
         val writes = writer.written.size
         advanceTimeBy(60_000)
-        assertEquals(writes, writer.written.size)
+        assertEquals("no writes while paused", writes, writer.written.size)
     }
 
     @Test
-    fun `configuration change does not pause`() = scope.runTest {
+    fun `leaving the app keeps running when the foreground service is available`() = vmTest {
         startSimulation()
 
-        viewModel.onAppStopped(isChangingConfigurations = true)
+        viewModel.onAppStopped(isChangingConfigurations = false)
         runCurrent()
         assertEquals(SimulationStatus.RUNNING, ui.status)
 
@@ -106,7 +141,39 @@ class SimulatorViewModelTest {
     }
 
     @Test
-    fun `permission denied blocks start`() = scope.runTest {
+    fun `configuration change never pauses even without the foreground service`() = vmTest {
+        startSimulation()
+        backgroundAvailable.value = false
+        runCurrent()
+
+        viewModel.onAppStopped(isChangingConfigurations = true)
+        runCurrent()
+
+        assertEquals(SimulationStatus.RUNNING, ui.status)
+    }
+
+    @Test
+    fun `recreated view model restores the target held by the process-level simulation`() = vmTest {
+        viewModel.refreshPermission()
+        viewModel.onEvent(SimulatorEvent.TargetInputChanged("5000"))
+        runCurrent()
+        assertEquals(SimulationStatus.READY, ui.status)
+
+        // 按 Back 後重開：ViewModel 重建，程序層級的模擬器仍存著目標
+        val recreated = SimulatorViewModel(
+            controller = runner,
+            healthConnect = healthConnect,
+            backgroundAvailable = backgroundAvailable,
+        )
+        recreated.refreshPermission()
+        runCurrent()
+
+        assertEquals("5000", recreated.state.value.targetInput)
+        assertTrue("start must stay enabled", recreated.state.value.canStart)
+    }
+
+    @Test
+    fun `permission denied blocks start`() = vmTest {
         healthConnect.granted = false
         startSimulation()
 
@@ -116,7 +183,7 @@ class SimulatorViewModelTest {
     }
 
     @Test
-    fun `write failure shows failed state and retry resumes ticking`() = scope.runTest {
+    fun `write failure shows failed state and retry resumes ticking`() = vmTest {
         startSimulation()
         writer.failWith = IOException("disk")
         advanceTimeBy(10_001)
@@ -133,7 +200,7 @@ class SimulatorViewModelTest {
     }
 
     @Test
-    fun `health connect unavailable is reported separately from permission`() = scope.runTest {
+    fun `health connect unavailable is reported separately from permission`() = vmTest {
         healthConnect.availability = HealthConnectAvailability.NEEDS_INSTALL
         viewModel.refreshPermission()
         runCurrent()
@@ -143,7 +210,7 @@ class SimulatorViewModelTest {
     }
 
     @Test
-    fun `write failure rechecks availability`() = scope.runTest {
+    fun `write failure rechecks availability`() = vmTest {
         startSimulation()
         assertEquals(true, ui.healthConnectAvailable)
 
@@ -160,7 +227,7 @@ class SimulatorViewModelTest {
     }
 
     @Test
-    fun `permission revoked during write rechecks permission`() = scope.runTest {
+    fun `permission revoked during write rechecks permission`() = vmTest {
         startSimulation()
         assertEquals(true, ui.permissionGranted)
 
@@ -173,7 +240,7 @@ class SimulatorViewModelTest {
     }
 
     @Test
-    fun `repeated failure with the same status rechecks permission`() = scope.runTest {
+    fun `repeated failure with the same status rechecks permission`() = vmTest {
         startSimulation()
         writer.failWith = IOException("disk")
         advanceTimeBy(10_001)
@@ -189,7 +256,7 @@ class SimulatorViewModelTest {
     }
 
     @Test
-    fun `permission restored is not shown before the recheck completes`() = scope.runTest {
+    fun `permission restored is not shown before the recheck completes`() = vmTest {
         startSimulation()
         assertEquals(true, ui.permissionGranted)
 
@@ -209,7 +276,7 @@ class SimulatorViewModelTest {
     }
 
     @Test
-    fun `failed permission check does not keep the stale value`() = scope.runTest {
+    fun `failed permission check does not keep the stale value`() = vmTest {
         startSimulation()
         assertEquals(true, ui.permissionGranted)
 
@@ -221,7 +288,7 @@ class SimulatorViewModelTest {
     }
 
     @Test
-    fun `reset rechecks permission`() = scope.runTest {
+    fun `reset rechecks permission`() = vmTest {
         startSimulation()
         val calls = healthConnect.hasAllPermissionsCalls
 
@@ -236,7 +303,7 @@ class SimulatorViewModelTest {
         failureMessageFor(ui.status, ui.simulation.failure, ui.permissionGranted, ui.healthConnectAvailable)
 
     @Test
-    fun `clearing a valid target disables start`() = scope.runTest {
+    fun `clearing a valid target disables start`() = vmTest {
         viewModel.refreshPermission()
         viewModel.onEvent(SimulatorEvent.TargetInputChanged("5000"))
         runCurrent()
@@ -253,7 +320,7 @@ class SimulatorViewModelTest {
     }
 
     @Test
-    fun `out of range target after a valid one disables start`() = scope.runTest {
+    fun `out of range target after a valid one disables start`() = vmTest {
         viewModel.refreshPermission()
         viewModel.onEvent(SimulatorEvent.TargetInputChanged("5000"))
         runCurrent()
@@ -271,7 +338,7 @@ class SimulatorViewModelTest {
     }
 
     @Test
-    fun `target input validation`() = scope.runTest {
+    fun `target input validation`() = vmTest {
         viewModel.refreshPermission()
 
         viewModel.onEvent(SimulatorEvent.TargetInputChanged("0"))

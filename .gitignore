@@ -16,3 +16,6 @@ local.properties
 /app/build
 .kotlin
 tmp/
+/.idea/deploymentTargetSelector.xml
+/.idea/deviceManager.xml
+/.idea/misc.xml
