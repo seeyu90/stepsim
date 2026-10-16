@@ -16,7 +16,8 @@ import kotlinx.coroutines.launch
  * 程序層級的模擬持有者：擁有自己的 CoroutineScope 與計時迴圈，不依賴任何畫面。
  *
  * 計時迴圈由狀態驅動：單一位置觀察狀態，RUNNING 時有且只有一個迴圈，離開 RUNNING 即取消。
- * [dispatcher] 應為單一執行緒（例如 `Dispatchers.Default.limitedParallelism(1)`），測試時注入測試用 dispatcher。
+ * [dispatcher] 須讓工作序列化執行（例如 `Dispatchers.Default.limitedParallelism(1)`：同一時間只有一個工作，
+ * 但不保證固定在同一條執行緒），測試時注入測試用 dispatcher。
  */
 class SimulationRunner(
     private val simulator: StepSimulator,
@@ -28,7 +29,7 @@ class SimulationRunner(
 
     override val state: StateFlow<SimulationState> = simulator.state
 
-    /** 目前執行中的計時迴圈數（只在 runner 的單一執行緒上讀寫），供測試驗證 RUNNING 時有且只有一個。 */
+    /** 目前執行中的計時迴圈數（只在 runner 的 dispatcher 上讀寫，工作序列化執行），供測試驗證 RUNNING 時有且只有一個。 */
     internal var activeTickLoops = 0
         private set
 

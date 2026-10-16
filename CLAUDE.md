@@ -42,7 +42,7 @@ StepSim（package `com.seeyu90.stepsim`）是「Health Connect 開發與 QA 測�
 ## 架構概觀（跨檔案的資料流）
 
 - **模擬是程序層級的單例**：`StepSimApp.simulation`（`SimulationController` 介面，實作為 `SimulationRunner`）不隨畫面建立或銷毀。畫面（`SimulatorViewModel`）與通知（`SimulationService`）都只觀察 `state: StateFlow<SimulationState>` 並送出指令，誰都不持有計時迴圈。
-- **`SimulationRunner`**：跑在單一執行緒 dispatcher（`Dispatchers.Default.limitedParallelism(1)`）上；計時迴圈由狀態驅動，RUNNING 時有且只有一個（`collectLatest`），每 10 秒呼叫一次 `tick()`。指令非同步執行，`CancellationException` 先重新拋出，再忽略 `IllegalStateException`／`IllegalArgumentException`；狀態不合法的指令（`IllegalStateException`／`IllegalArgumentException`）直接忽略，以容忍連點與畫面／通知同時操作。
+- **`SimulationRunner`**：跑在序列化 dispatcher（`Dispatchers.Default.limitedParallelism(1)`：同一時間只有一個工作，但不固定在同一條執行緒）上；計時迴圈由狀態驅動，RUNNING 時有且只有一個（`collectLatest`），每 10 秒呼叫一次 `tick()`。指令非同步執行，`CancellationException` 先重新拋出，再忽略 `IllegalStateException`／`IllegalArgumentException`；狀態不合法的指令（`IllegalStateException`／`IllegalArgumentException`）直接忽略，以容忍連點與畫面／通知同時操作。
 - **`StepSimulator`**：狀態機本體，所有操作以 `Mutex` 串行。關鍵不變量：
   - 每批區間為 `[上一批結束, 現在)`，只寫已過去的時間、連續且不重疊；小數步數以整數單位累積到下一批，最後一批截到剛好達標
   - 暫停、寫入失敗期間留空，恢復後從當下開始，不補寫空窗

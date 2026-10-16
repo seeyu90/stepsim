@@ -26,7 +26,7 @@ class StepSimApp : Application() {
                 writer = HealthConnectStepWriter(this),
                 sessionId = UUID.randomUUID().toString(),
             ),
-            // 單一執行緒：所有指令與計時依序執行
+            // 序列化（不固定執行緒）：所有指令與計時依序執行
             dispatcher = Dispatchers.Default.limitedParallelism(1),
         )
     }
