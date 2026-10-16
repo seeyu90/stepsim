@@ -106,6 +106,29 @@ class ForegroundPolicyTest {
     }
 
     @Test
+    fun `stop detaches only when the completion notification was actually posted`() {
+        val completed = stopNotificationModel(state(SimulationStatus.COMPLETED, written = 5_000))
+
+        assertEquals(StopForegroundMode.DETACH, stopForegroundMode(completed, posted = true))
+        // 通知被關閉：完成通知沒發出，不可 DETACH，否則「執行中」的通知會過期遺留
+        assertEquals(StopForegroundMode.REMOVE, stopForegroundMode(completed, posted = false))
+    }
+
+    @Test
+    fun `stop removes the foreground notification when nothing is left behind`() {
+        for (status in SimulationStatus.entries - SimulationStatus.COMPLETED) {
+            val leftover = stopNotificationModel(state(status))
+            for (posted in listOf(true, false)) {
+                assertEquals(
+                    "status=$status posted=$posted",
+                    StopForegroundMode.REMOVE,
+                    stopForegroundMode(leftover, posted),
+                )
+            }
+        }
+    }
+
+    @Test
     fun `button command is forwarded even when foreground start fails`() {
         for (action in NotificationAction.entries) {
             for (started in listOf(true, false)) {

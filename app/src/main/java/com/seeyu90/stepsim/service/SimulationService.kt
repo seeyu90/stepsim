@@ -104,14 +104,14 @@ class SimulationService : Service() {
      * 由新的 onStartCommand 重新進入前景後再判斷。
      */
     private fun stopForegroundAndSelf(snapshot: SimulationState) {
+        // 完成：結束前景，但留下一則可滑掉的「已完成」通知；通知沒發出（例如被關閉）就不能 DETACH
         val model = stopNotificationModel(snapshot)
-        if (model != null) {
-            // 完成：結束前景，但留下一則可滑掉的「已完成」通知
-            notify(buildNotification(model))
-            ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_DETACH)
-        } else {
-            ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
+        val posted = model != null && notify(buildNotification(model))
+        val flag = when (stopForegroundMode(model, posted)) {
+            StopForegroundMode.DETACH -> ServiceCompat.STOP_FOREGROUND_DETACH
+            StopForegroundMode.REMOVE -> ServiceCompat.STOP_FOREGROUND_REMOVE
         }
+        ServiceCompat.stopForeground(this, flag)
         stopSelf(lastStartId)
     }
 
@@ -139,13 +139,16 @@ class SimulationService : Service() {
         getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
     }
 
-    private fun notify(notification: Notification) {
+    /** 回傳通知是否確實送出；被關閉或失敗時為 false，呼叫端需自行收尾，不可假設通知存在。 */
+    private fun notify(notification: Notification): Boolean {
         // 通知權限被拒時不顯示於通知欄（前景服務仍會出現在工作管理員），不可因此崩潰
-        if (!NotificationManagerCompat.from(this).areNotificationsEnabled()) return
-        try {
+        if (!NotificationManagerCompat.from(this).areNotificationsEnabled()) return false
+        return try {
             NotificationManagerCompat.from(this).notify(NOTIFICATION_ID, notification)
+            true
         } catch (e: SecurityException) {
             Log.w(TAG, "notify failed", e)
+            false
         }
     }
 

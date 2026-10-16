@@ -70,6 +70,16 @@ fun notificationModel(state: SimulationState): NotificationModel? {
 fun stopNotificationModel(snapshot: SimulationState): NotificationModel? =
     if (snapshot.status == SimulationStatus.COMPLETED) notificationModel(snapshot) else null
 
+enum class StopForegroundMode { DETACH, REMOVE }
+
+/**
+ * 停止前景時前景通知的去留：只有 [leftover]（[stopNotificationModel]）存在且確實發出（[posted]）才 DETACH，
+ * 讓位給可滑掉的完成通知；其餘一律 REMOVE。完成通知沒發出（例如通知被關閉）卻還 DETACH，
+ * 會把當初 startForeground 的「執行中」通知（附暫停／結束按鈕）過期遺留在通知列。
+ */
+fun stopForegroundMode(leftover: NotificationModel?, posted: Boolean): StopForegroundMode =
+    if (leftover != null && posted) StopForegroundMode.DETACH else StopForegroundMode.REMOVE
+
 data class StartCommandOutcome(
     /** 要轉送給模擬的通知按鈕指令；不因前景啟動失敗而丟失。 */
     val command: NotificationAction?,
