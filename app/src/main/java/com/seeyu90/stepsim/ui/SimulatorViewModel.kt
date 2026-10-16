@@ -44,7 +44,8 @@ class SimulatorViewModel(
     /** null 代表尚在檢查。 */
     private data class Access(val available: Boolean? = null, val granted: Boolean? = null)
 
-    private val form = MutableStateFlow(Form())
+    // 模擬器是程序層級的，ViewModel 重建時它可能已有目標：從它還原，輸入框才不會與模擬器分歧
+    private val form = MutableStateFlow(Form(targetInput = controller.state.value.targetSteps?.toString().orEmpty()))
     private val access = MutableStateFlow(Access())
 
     val state: StateFlow<SimulatorUiState> =

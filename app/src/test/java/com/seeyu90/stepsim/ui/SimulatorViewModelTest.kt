@@ -113,6 +113,26 @@ class SimulatorViewModelTest {
     }
 
     @Test
+    fun `recreated view model restores the target held by the process-level simulation`() = vmTest {
+        viewModel.refreshPermission()
+        viewModel.onEvent(SimulatorEvent.TargetInputChanged("5000"))
+        runCurrent()
+        assertEquals(SimulationStatus.READY, ui.status)
+
+        // 按 Back 後重開：ViewModel 重建，程序層級的模擬器仍存著目標
+        val recreated = SimulatorViewModel(
+            controller = runner,
+            healthConnect = healthConnect,
+            backgroundAvailable = backgroundAvailable,
+        )
+        recreated.refreshPermission()
+        runCurrent()
+
+        assertEquals("5000", recreated.state.value.targetInput)
+        assertTrue("start must stay enabled", recreated.state.value.canStart)
+    }
+
+    @Test
     fun `permission denied blocks start`() = vmTest {
         healthConnect.granted = false
         startSimulation()
