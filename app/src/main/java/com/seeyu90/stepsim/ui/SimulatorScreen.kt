@@ -193,7 +193,7 @@ private fun Header() {
     }
 }
 
-/** 主要內容被存取提示取代時（檢查中、Health Connect 不可用、尚未允許）。 */
+/** 主要內容被存取提示取代時（檢查中、檢查失敗、Health Connect 不可用、尚未允許）。 */
 @Composable
 private fun AccessContent(state: SimulatorUiState) {
     when (state.accessNotice) {
@@ -202,6 +202,7 @@ private fun AccessContent(state: SimulatorUiState) {
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+        AccessNotice.CHECK_FAILED -> NoticeCard(stringResource(R.string.perm_check_failed))
         AccessNotice.HEALTH_CONNECT_UNAVAILABLE -> NoticeCard(stringResource(R.string.err_unavailable))
         AccessNotice.PERMISSION_REQUIRED -> NoticeCard(stringResource(R.string.cta_hint_need_permission))
         AccessNotice.NONE -> Unit
@@ -515,6 +516,7 @@ private fun BottomBar(state: SimulatorUiState, onEvent: (SimulatorEvent) -> Unit
                 BottomAction.GO_ALLOW -> Triple(R.string.btn_go_allow, null, SimulatorEvent.OpenPermission)
                 BottomAction.GO_CHECK -> Triple(R.string.btn_go_check, null, SimulatorEvent.OpenPermission)
                 BottomAction.START_NEW -> Triple(R.string.cta_new, null, SimulatorEvent.Reset)
+                BottomAction.RECHECK -> Triple(R.string.btn_retry, null, SimulatorEvent.Recheck)
             }
             PrimaryButton(
                 text = stringResource(label),

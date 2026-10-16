@@ -24,9 +24,11 @@ class SimulatorActionsTest {
         written: Long = 2_100,
         target: Long? = 5_000,
         input: String = "",
+        checkFailed: Boolean = false,
     ) = SimulatorUiState(
         permissionGranted = granted,
         healthConnectAvailable = available,
+        permissionCheckFailed = checkFailed,
         targetInput = input,
         simulation = SimulationState(
             status = status,
@@ -83,15 +85,20 @@ class SimulatorActionsTest {
     }
 
     @Test
-    fun `every failed state has an exit and unknown permission always keeps retry`() {
+    fun `every state has an exit and unknown permission always keeps retry when failed`() {
         val values = listOf(null, true, false)
-        for (status in listOf(SimulationStatus.FAILED, SimulationStatus.PERMISSION_REVOKED)) {
-            for (granted in values) for (available in values) {
-                val state = ui(status, granted = granted, available = available, failure = IOException())
-                val label = "status=$status granted=$granted available=$available"
-                assertNotNull(label, state.bottomAction)
-                assertTrue(label, SecondaryAction.END in state.secondaryActions)
-                if (granted == null) {
+        for (status in SimulationStatus.entries) {
+            for (granted in values) for (available in values) for (checkFailed in listOf(false, true)) {
+                val state = ui(status, granted = granted, available = available, failure = IOException(), checkFailed = checkFailed)
+                val label = "status=$status granted=$granted available=$available checkFailed=$checkFailed"
+                // 只有「檢查尚未結束」可以沒有主按鈕
+                if (state.accessNotice != AccessNotice.CHECKING) assertNotNull(label, state.bottomAction)
+                if (state.accessNotice == AccessNotice.CHECK_FAILED) assertEquals(label, BottomAction.RECHECK, state.bottomAction)
+                if (state.hasStarted) {
+                    assertTrue(label, SecondaryAction.END in state.secondaryActions)
+                    assertTrue(label, state.showMainContent || state.showStandaloneReset)
+                }
+                if (state.isFailed && granted == null) {
                     assertTrue(
                         label,
                         state.bottomAction == BottomAction.RETRY || SecondaryAction.RETRY in state.secondaryActions,
@@ -99,6 +106,43 @@ class SimulatorActionsTest {
                 }
             }
         }
+    }
+
+    // ---- 權限檢查失敗與提示狀態下的出口 ----
+
+    @Test
+    fun `failed permission check offers recheck instead of an endless checking state`() {
+        val failed = ui(SimulationStatus.READY, granted = null, available = null, input = "5000", checkFailed = true)
+        assertEquals(AccessNotice.CHECK_FAILED, failed.accessNotice)
+        assertEquals(BottomAction.RECHECK, failed.bottomAction)
+
+        val checking = failed.copy(permissionCheckFailed = false)
+        assertEquals("checking only means the check has not finished", AccessNotice.CHECKING, checking.accessNotice)
+        assertNull(checking.bottomAction)
+    }
+
+    @Test
+    fun `paused simulation can be ended while a notice replaces the main content`() {
+        val notices = listOf(
+            ui(SimulationStatus.PAUSED, granted = false),
+            ui(SimulationStatus.PAUSED, granted = false, available = false),
+            ui(SimulationStatus.PAUSED, granted = null),
+            ui(SimulationStatus.PAUSED, granted = null, checkFailed = true),
+        )
+        for (state in notices) {
+            val label = "notice=${state.accessNotice}"
+            assertFalse(label, state.showMainContent)
+            assertTrue(label, state.showStandaloneReset)
+            assertTrue(label, SecondaryAction.END in state.secondaryActions)
+        }
+    }
+
+    @Test
+    fun `running simulation can be ended while permission is revoked`() {
+        val state = ui(SimulationStatus.RUNNING, granted = false)
+        assertEquals(BottomAction.GO_ALLOW, state.bottomAction)
+        assertTrue(state.showStandaloneReset)
+        assertTrue(SecondaryAction.END in state.secondaryActions)
     }
 
     // ---- 一般狀態 ----

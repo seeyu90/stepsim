@@ -41,7 +41,12 @@ sealed interface RemainingTime {
 }
 
 /** 底部固定的主要動作；一個畫面只有一個。 */
-enum class BottomAction { START, PAUSE, RESUME, RETRY, GO_ALLOW, GO_CHECK, START_NEW }
+enum class BottomAction {
+    START, PAUSE, RESUME, RETRY, GO_ALLOW, GO_CHECK, START_NEW,
+
+    /** 權限檢查本身失敗：重新檢查（不是重送批次）。 */
+    RECHECK,
+}
 
 /** 捲動區裡的次要操作（文字按鈕）。「結束本次模擬」一律先跳確認對話框。 */
 enum class SecondaryAction { RETRY, END }

@@ -9,13 +9,25 @@ import com.seeyu90.stepsim.simulator.StepSimulator
 enum class TargetInputError { OUT_OF_RANGE }
 
 /** 主要內容上方的存取提示；非 [NONE] 時主要內容（目標、步態、進度、操作）不顯示。 */
-enum class AccessNotice { NONE, CHECKING, HEALTH_CONNECT_UNAVAILABLE, PERMISSION_REQUIRED }
+enum class AccessNotice {
+    NONE,
+
+    /** 權限檢查尚未結束。 */
+    CHECKING,
+
+    /** 權限檢查本身失敗（例如 Health Connect 服務暫時無法連線），可再試一次。 */
+    CHECK_FAILED,
+    HEALTH_CONNECT_UNAVAILABLE,
+    PERMISSION_REQUIRED,
+}
 
 data class SimulatorUiState(
     /** null 代表尚在檢查。 */
     val permissionGranted: Boolean? = null,
     /** getSdkStatus 是否為 AVAILABLE；null 代表尚在檢查。 */
     val healthConnectAvailable: Boolean? = null,
+    /** 最近一次權限檢查本身失敗（權限仍為未知）。 */
+    val permissionCheckFailed: Boolean = false,
     val targetInput: String = "",
     val targetError: TargetInputError? = null,
     val simulation: SimulationState = SimulationState(),
@@ -37,7 +49,8 @@ data class SimulatorUiState(
             healthConnectAvailable == false ->
                 if (status == SimulationStatus.FAILED) AccessNotice.NONE else AccessNotice.HEALTH_CONNECT_UNAVAILABLE
             permissionGranted == false -> AccessNotice.PERMISSION_REQUIRED
-            permissionGranted == null && !isFailed -> AccessNotice.CHECKING
+            permissionGranted == null && !isFailed ->
+                if (permissionCheckFailed) AccessNotice.CHECK_FAILED else AccessNotice.CHECKING
             else -> AccessNotice.NONE
         }
 
@@ -51,8 +64,15 @@ data class SimulatorUiState(
     val showForegroundHint: Boolean
         get() = status == SimulationStatus.RUNNING && backgroundAvailable
 
-    /** 失敗時一律能「結束並重設」：主要內容被提示取代時，另外單獨顯示重設按鈕。 */
-    val showStandaloneReset: Boolean get() = isFailed && !showMainContent
+    /** 模擬已開始（含暫停與失敗）：這時一律要能「結束本次模擬」。 */
+    val hasStarted: Boolean
+        get() = status == SimulationStatus.RUNNING || status == SimulationStatus.PAUSED || isFailed
+
+    /**
+     * 已開始的模擬一律能結束：主要內容被提示取代時（權限被撤銷、Health Connect 不可用、檢查中或檢查失敗），
+     * 另外單獨提供結束。暫停中的模擬不會再寫入、也就不會變成失敗，所以不能只看 [isFailed]。
+     */
+    val showStandaloneReset: Boolean get() = hasStarted && !showMainContent
 
     /** 目標與步態只能在尚未開始時修改；步態另外可在暫停時修改。 */
     val canEditTarget: Boolean
@@ -115,6 +135,7 @@ data class SimulatorUiState(
             isFailed -> failedBottomAction
             accessNotice == AccessNotice.HEALTH_CONNECT_UNAVAILABLE -> BottomAction.GO_CHECK
             accessNotice == AccessNotice.PERMISSION_REQUIRED -> BottomAction.GO_ALLOW
+            accessNotice == AccessNotice.CHECK_FAILED -> BottomAction.RECHECK
             accessNotice == AccessNotice.CHECKING -> null
             else -> when (status) {
                 SimulationStatus.IDLE, SimulationStatus.READY -> BottomAction.START
@@ -141,9 +162,7 @@ data class SimulatorUiState(
     val secondaryActions: List<SecondaryAction>
         get() = buildList {
             if (isFailed && permissionGranted == null && bottomAction != BottomAction.RETRY) add(SecondaryAction.RETRY)
-            if (status == SimulationStatus.RUNNING || status == SimulationStatus.PAUSED || isFailed) {
-                add(SecondaryAction.END)
-            }
+            if (hasStarted) add(SecondaryAction.END)
         }
 
     private val parsedTarget: Long?
@@ -160,4 +179,7 @@ sealed interface SimulatorEvent {
     data object Retry : SimulatorEvent
     data object Reset : SimulatorEvent
     data object OpenPermission : SimulatorEvent
+
+    /** 權限檢查本身失敗後，重新檢查。 */
+    data object Recheck : SimulatorEvent
 }
