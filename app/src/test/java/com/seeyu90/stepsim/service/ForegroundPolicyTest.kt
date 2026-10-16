@@ -1,6 +1,7 @@
 package com.seeyu90.stepsim.service
 
 import com.seeyu90.stepsim.simulator.Gait
+import com.seeyu90.stepsim.simulator.SimulationRunner
 import com.seeyu90.stepsim.simulator.SimulationState
 import com.seeyu90.stepsim.simulator.SimulationStatus
 import org.junit.Assert.assertEquals
@@ -36,6 +37,25 @@ class ForegroundPolicyTest {
         for (status in listOf(SimulationStatus.COMPLETED, SimulationStatus.IDLE, SimulationStatus.READY)) {
             assertFalse("status $status", shouldRunForeground(status))
         }
+    }
+
+    @Test
+    fun `wake lock is held only while running`() {
+        for (status in SimulationStatus.entries) {
+            assertEquals("status $status", status == SimulationStatus.RUNNING, shouldHoldWakeLock(status))
+        }
+    }
+
+    @Test
+    fun `wake lock is never held without the foreground service`() {
+        for (status in SimulationStatus.entries.filter(::shouldHoldWakeLock)) {
+            assertTrue("status $status", shouldRunForeground(status))
+        }
+    }
+
+    @Test
+    fun `wake lock timeout outlasts several tick intervals so renewals can keep it alive`() {
+        assertTrue(WAKE_LOCK_TIMEOUT_MILLIS >= 10 * SimulationRunner.TICK_INTERVAL_MILLIS)
     }
 
     @Test

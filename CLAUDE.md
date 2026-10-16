@@ -83,7 +83,7 @@ StepSim（package `com.seeyu90.stepsim`）是「Health Connect 開發與 QA 測�
 ## 待驗證清單
 - 拒絕通知權限後重測一輪：不崩潰、模擬照跑
 - 執行中在 Health Connect 撤銷權限：通知顯示錯誤、「結束本次模擬」可用、不崩潰
-- 長時間背景執行（3,000 步以上，回到主畫面離開並鎖屏）
+- 長時間背景執行（3,000 步以上，回到主畫面離開並鎖屏）。**請拔掉 USB** 再測：接電時 CPU 不一定休眠，會測不出 wake lock 的差別。跑完後從 Health Connect 明細確認批次間隔約 10 秒，而不是醒來後一次補寫的大批次；另在執行中途接上 USB 執行 `adb shell dumpsys power`，應可看到 `stepsim:simulation`，暫停或結束後消失
 - 最近使用清單「鎖定」是否能避免被強制停止
 - Health Connect 明細：紀錄方式的標示、鎖屏期間實際批次間隔
 - 同 clientRecordId 重送是否去重（需 debug 開關，尚未做）
@@ -121,5 +121,6 @@ StepSim（package `com.seeyu90.stepsim`）是「Health Connect 開發與 QA 測�
 - 一個 commit 只做一件事；清理與重構獨立 commit
 
 ## 決定紀錄
+- 執行中持有 `PARTIAL_WAKE_LOCK`（`WAKE_LOCK` 為一般權限）：前景服務只保證程序不被終止，不保證 CPU 不休眠；螢幕熄滅且沒接電時，`delay` 型的計時迴圈會停住，醒來後才一次補寫整段休眠時間。只在 RUNNING 持有（`shouldHoldWakeLock`），暫停、失敗、結束與服務銷毀時釋放；帶 5 分鐘保險逾時並由每次狀態更新續約，服務異常中止時最久多撐 5 分鐘。phase-3 已移除的 `keepScreenOn` 不需要恢復。**尚未實機驗證**（見待驗證清單）。
 - 從最近使用清單滑掉 App 會終止模擬（已確認原因）：ASUS Android 15 上 logcat 顯示 `stop com.seeyu90.stepsim due to from pid <...> (com.asus.launcher)`，是桌面程式對套件執行強制停止。強制停止無法在 App 內攔截，也不會自動重啟；前景服務、START_STICKY、WorkManager 都無法防止。結論：不處理，改以提示使用者避免從最近使用清單滑掉；是否做 3b（狀態恢復）列為之後的選配。已寫入的批次不受影響。
 - health 類型前景服務的啟動前提（Android 14+）：以在 Manifest 宣告 `HIGH_SAMPLING_RATE_SENSORS` 滿足（一般權限，安裝時自動授予、使用者無法撤銷）；App 不讀取任何感測器。Health Connect 的 READ_STEPS／WRITE_STEPS 不在前提清單內，不能用來滿足。備案：階段 10 上架前改評估 `specialUse` 類型（需在 Play Console 申報用途；見「階段 10 上架阻擋項」）。

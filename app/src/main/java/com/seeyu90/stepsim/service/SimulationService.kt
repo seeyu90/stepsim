@@ -10,6 +10,7 @@ import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
+import android.os.PowerManager
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -41,6 +42,9 @@ class SimulationService : Service() {
 
     /** 最近一次 onStartCommand 的 startId；只在主執行緒讀寫，於呼叫 stopSelf 的當下讀取。 */
     private var lastStartId = 0
+
+    /** 執行中持有的 PARTIAL_WAKE_LOCK；只在主執行緒讀寫。見 [syncWakeLock]。 */
+    private var wakeLock: PowerManager.WakeLock? = null
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -81,6 +85,7 @@ class SimulationService : Service() {
         if (observeJob == null) {
             observeJob = scope.launch {
                 app.simulation.state.collect { current ->
+                    syncWakeLock(current.status)
                     if (!shouldRunForeground(current.status)) {
                         stopForegroundAndSelf(current)
                     } else {
@@ -94,6 +99,7 @@ class SimulationService : Service() {
 
     override fun onDestroy() {
         scope.cancel()
+        releaseWakeLock()
         app.backgroundAvailability.reportStopped()
         super.onDestroy()
     }
@@ -112,7 +118,30 @@ class SimulationService : Service() {
             StopForegroundMode.REMOVE -> ServiceCompat.STOP_FOREGROUND_REMOVE
         }
         ServiceCompat.stopForeground(this, flag)
+        releaseWakeLock()
         stopSelf(lastStartId)
+    }
+
+    /**
+     * 執行中持有 PARTIAL_WAKE_LOCK，其餘狀態釋放。前景服務只保證程序不被終止，不保證 CPU 不休眠：
+     * 螢幕熄滅且沒接電時 CPU 可能休眠，`delay` 型的計時迴圈會停住，醒來後才一次補寫整段休眠時間。
+     * 逾時是保險：執行中每次狀態更新（約每 10 秒）都會呼叫並續約，服務異常中止時最久只多撐 [WAKE_LOCK_TIMEOUT_MILLIS]。
+     */
+    private fun syncWakeLock(status: SimulationStatus) {
+        if (!shouldHoldWakeLock(status)) {
+            releaseWakeLock()
+            return
+        }
+        val lock = wakeLock ?: getSystemService(PowerManager::class.java)
+            .newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, WAKE_LOCK_TAG)
+            .apply { setReferenceCounted(false) }
+            .also { wakeLock = it }
+        lock.acquire(WAKE_LOCK_TIMEOUT_MILLIS)
+    }
+
+    private fun releaseWakeLock() {
+        wakeLock?.let { if (it.isHeld) it.release() }
+        wakeLock = null
     }
 
     private fun notificationAction(intentAction: String?): NotificationAction? = when (intentAction) {
@@ -222,6 +251,7 @@ class SimulationService : Service() {
 
     companion object {
         private const val TAG = "SimulationService"
+        private const val WAKE_LOCK_TAG = "stepsim:simulation"
         private const val CHANNEL_ID = "simulation"
         private const val NOTIFICATION_ID = 1
         private const val ACTION_PAUSE = "com.seeyu90.stepsim.action.PAUSE"

@@ -16,6 +16,15 @@ private val FOREGROUND_STATUSES = setOf(
 
 fun shouldRunForeground(status: SimulationStatus): Boolean = status in FOREGROUND_STATUSES
 
+/**
+ * 只有執行中（計時迴圈在跑）才需要保持 CPU 喚醒；暫停、失敗時沒有計時工作，不持有以免白白耗電。
+ * 必為 [shouldRunForeground] 的子集：沒有前景服務就不會有人持有 wake lock。
+ */
+fun shouldHoldWakeLock(status: SimulationStatus): Boolean = status == SimulationStatus.RUNNING
+
+/** wake lock 的保險逾時：執行中每次狀態更新（約每 10 秒）都會續約，服務異常中止時最久只多撐這麼久。 */
+const val WAKE_LOCK_TIMEOUT_MILLIS = 5 * 60 * 1000L
+
 enum class NotificationKind { RUNNING, PAUSED, FAILED, PERMISSION_REVOKED, COMPLETED }
 
 enum class NotificationAction { PAUSE, RESUME, STOP }
