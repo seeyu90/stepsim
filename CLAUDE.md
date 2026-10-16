@@ -37,6 +37,7 @@ StepSim（package `com.seeyu90.stepsim`）是「Health Connect 開發與 QA 測�
 - 依賴版本使用目前最新穩定版。
 - ViewModel 的依賴一律以建構子注入「介面」，搭配 ViewModelProvider.Factory，不引入 Hilt
 - 新增邏輯要附單元測試，fake 寫在測試檔內；修競態類 bug 時，測試必須驗證「拿掉修正會變紅」
+- 步數寫入：只寫「已過去」的時間區間；區間連續且不重疊（重疊會讓步數重複計算）；以 Metadata 標明紀錄方式與來源
 
 ## 裝置與模擬器（Windows）
 - 安裝前先 `adb devices`，必須看到 `device` 才執行 installDebug；多台裝置時用 `adb -s <序號>`
@@ -61,16 +62,22 @@ StepSim（package `com.seeyu90.stepsim`）是「Health Connect 開發與 QA 測�
 - 階段 9.5：UI/UX 重新規劃（正式版畫面、免責聲明與責任使用說明、無障礙、多語系）
 
 **目前進度：**
-- 階段 1：程式與單元測試完成，授權視窗待裝置驗證
-- 階段 2：UI 與模擬邏輯完成（Preview＋單元測試），Health Connect 實際寫入待裝置驗證
+- 階段 1：授權流程已於 Android 15 實機驗證（授權後狀態顯示、可寫入）。尚未驗證：部分授權、連續拒絕兩次後的導向
+- 階段 2：寫入與總數已於實機驗證（300 步總數正確）。尚未驗證：同 clientRecordId 重送的去重、寫入頻率限制、Health Connect 明細的「紀錄方式」標示
+- 階段 3a：前景服務啟動、背景與鎖屏持續寫入、通知的暫停／繼續／結束已於實機驗證（ASUS Android 15）。已知限制：從最近使用清單滑掉 App 會被 ASUS 桌面強制停止（見決定紀錄），不處理
+
+## 待驗證清單
+- 拒絕通知權限後重測一輪：不崩潰、模擬照跑
+- 執行中在 Health Connect 撤銷權限：通知顯示錯誤、「結束本次模擬」可用、不崩潰
+- 長時間背景執行（3,000 步以上，回到主畫面離開並鎖屏）
+- 最近使用清單「鎖定」是否能避免被強制停止
+- Health Connect 明細：紀錄方式的標示、鎖屏期間實際批次間隔
+- 同 clientRecordId 重送是否去重（需 debug 開關，尚未做）
+- 通知小圖示是否顯示成白色方塊
 
 ## 驗收與進度
 - 「階段 N 完成」只在使用者手動驗收通過後才能寫入；程式碼寫完、測試通過都不算完成
 - 一個 commit 只做一件事；清理與重構獨立 commit
-
-## 後續階段備忘（尚未實作，勿提前做）
-- 階段 2：只寫「已過去」的時間區間；區間連續且不重疊（重疊會讓步數重複計算）；以 Metadata 標明紀錄方式與來源
-- 階段 3：Manifest 需補 FOREGROUND_SERVICE_HEALTH、POST_NOTIFICATIONS，以及 service 的 foregroundServiceType="health"，細節以最新官方文件為準
 
 ## 決定紀錄
 - 從最近使用清單滑掉 App 會終止模擬（已確認原因）：ASUS Android 15 上 logcat 顯示 `stop com.seeyu90.stepsim due to from pid <...> (com.asus.launcher)`，是桌面程式對套件執行強制停止。強制停止無法在 App 內攔截，也不會自動重啟；前景服務、START_STICKY、WorkManager 都無法防止。結論：不處理，改以提示使用者避免從最近使用清單滑掉；是否做 3b（狀態恢復）列為之後的選配。已寫入的批次不受影響。
