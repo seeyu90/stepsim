@@ -96,6 +96,29 @@ class SimulatorUiStateTest {
     }
 
     @Test
+    fun `foreground hint is shown only while running with background available`() {
+        for (status in SimulationStatus.entries) {
+            val ok = state(status, granted = true, available = true)
+            assertEquals("status $status", status == SimulationStatus.RUNNING, ok.showForegroundHint)
+            assertFalse(
+                "background unavailable, status $status",
+                ok.copy(backgroundAvailable = false).showForegroundHint,
+            )
+        }
+    }
+
+    @Test
+    fun `foreground hint never contradicts the background unavailable warning`() {
+        for (status in SimulationStatus.entries) for (background in listOf(true, false)) {
+            val ui = state(status, granted = true, available = true).copy(backgroundAvailable = background)
+            assertFalse(
+                "status=$status backgroundAvailable=$background",
+                ui.showForegroundHint && ui.showBackgroundUnavailable,
+            )
+        }
+    }
+
+    @Test
     fun `granted and available shows main content`() {
         val ui = state(SimulationStatus.RUNNING, granted = true, available = true)
         assertEquals(AccessNotice.NONE, ui.accessNotice)

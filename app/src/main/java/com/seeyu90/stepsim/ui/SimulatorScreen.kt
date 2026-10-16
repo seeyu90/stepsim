@@ -295,11 +295,8 @@ private fun ProgressSection(state: SimulatorUiState) {
             state.status == SimulationStatus.RUNNING && minutes != null ->
                 InfoText(stringResource(R.string.sim_estimate_remaining, minutes))
         }
-        when (state.status) {
-            SimulationStatus.RUNNING -> InfoText("ⓘ " + stringResource(R.string.sim_foreground_hint))
-            SimulationStatus.PAUSED -> InfoText(stringResource(R.string.sim_paused_hint))
-            else -> Unit
-        }
+        if (state.showForegroundHint) InfoText("ⓘ " + stringResource(R.string.sim_foreground_hint))
+        if (state.status == SimulationStatus.PAUSED) InfoText(stringResource(R.string.sim_paused_hint))
         if (state.showBackgroundUnavailable) {
             Text(
                 "⚠ " + stringResource(R.string.sim_background_unavailable),
