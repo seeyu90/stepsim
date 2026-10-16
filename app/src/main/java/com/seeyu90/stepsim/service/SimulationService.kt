@@ -154,7 +154,7 @@ class SimulationService : Service() {
 
     private fun buildNotification(model: NotificationModel?): Notification {
         val builder = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(R.mipmap.ic_launcher)
+            .setSmallIcon(R.drawable.ic_stat_steps)
             .setOnlyAlertOnce(true)
             .setContentIntent(openAppIntent())
             .setCategory(NotificationCompat.CATEGORY_WORKOUT)

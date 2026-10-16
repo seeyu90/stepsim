@@ -87,7 +87,7 @@ StepSim（package `com.seeyu90.stepsim`）是「Health Connect 開發與 QA 測�
 - 最近使用清單「鎖定」是否能避免被強制停止
 - Health Connect 明細：紀錄方式的標示、鎖屏期間實際批次間隔
 - 同 clientRecordId 重送是否去重（需 debug 開關，尚未做）
-- 通知小圖示是否顯示成白色方塊
+- 通知小圖示：已由 launcher 的 adaptive 圖示改為單色向量圖（`ic_stat_steps`），待實機確認狀態列顯示為走路人剪影而非白色方塊
 - 前景服務對帳（commit a952fab）：
   - 20 步目標跑完立刻重設再開始，連續 10 次；之後 logcat 不應出現 did not start 或 ForegroundService 相關錯誤
   - 啟動失敗用的 debug 版（暫時拿掉 `HIGH_SAMPLING_RATE_SENSORS`，不要 commit）：開始 → 結束 → 再開始，應再次嘗試啟動；離開前景需求時「無法在背景執行」提示消失
