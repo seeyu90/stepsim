@@ -59,6 +59,24 @@ fun IconTextRow(text: String, modifier: Modifier = Modifier) {
     }
 }
 
+/** 單句提醒（errorContainer＋警告圖示），例如「無法在背景繼續」；屬於提示，不是失敗。 */
+@Composable
+fun NoticeCard(text: String, modifier: Modifier = Modifier) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        shape = CardShape,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.errorContainer,
+            contentColor = MaterialTheme.colorScheme.onErrorContainer,
+        ),
+    ) {
+        Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Icon(painterResource(R.drawable.ic_warning), contentDescription = null, modifier = Modifier.size(24.dp))
+            Text(text, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+        }
+    }
+}
+
 /**
  * 錯誤或提醒卡（errorContainer）：一句白話主訊息＋可選的詳細資訊。
  * 刻意不放按鈕：主要動作固定在畫面底部。

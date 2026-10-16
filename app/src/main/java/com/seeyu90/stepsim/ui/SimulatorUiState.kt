@@ -82,6 +82,70 @@ data class SimulatorUiState(
             return (remaining + cadence - 1) / cadence
         }
 
+    // ---- 以下為純顯示用的衍生屬性（階段 9.5） ----
+
+    /** 進度百分比，無條件捨去（與通知同算法）：未達標前不會顯示 100。無目標時為 0。 */
+    val progressPercent: Int
+        get() {
+            val target = displayTarget?.takeIf { it > 0 } ?: return 0
+            return (simulation.writtenSteps * 100 / target).toInt().coerceIn(0, 100)
+        }
+
+    /** 剩餘時間只在執行中顯示（暫停、失敗、完成時不顯示）。 */
+    val showRemaining: Boolean
+        get() = status == SimulationStatus.RUNNING && remainingMinutes != null
+
+    /** 準備狀態（尚無進度）用較小的圓環。 */
+    val compactRing: Boolean get() = canEditTarget
+
+    /** 目標步數只在準備狀態顯示；速度另外在暫停時也能切換。 */
+    val showTargetInput: Boolean get() = canEditTarget
+
+    val showGaitSelector: Boolean get() = canEditGait
+
+    val startHint: StartHint?
+        get() = if (bottomAction == BottomAction.START && displayTarget == null) StartHint.NEED_GOAL else null
+
+    /**
+     * 底部固定的主要動作；null 代表不顯示（例如權限檢查中）。
+     * 失敗時依原因決定（對照表見 docs/phase-9.5/decisions.md「失敗時的按鈕」）。
+     */
+    val bottomAction: BottomAction?
+        get() = when {
+            isFailed -> failedBottomAction
+            accessNotice == AccessNotice.HEALTH_CONNECT_UNAVAILABLE -> BottomAction.GO_CHECK
+            accessNotice == AccessNotice.PERMISSION_REQUIRED -> BottomAction.GO_ALLOW
+            accessNotice == AccessNotice.CHECKING -> null
+            else -> when (status) {
+                SimulationStatus.IDLE, SimulationStatus.READY -> BottomAction.START
+                SimulationStatus.RUNNING -> BottomAction.PAUSE
+                SimulationStatus.PAUSED -> BottomAction.RESUME
+                SimulationStatus.COMPLETED -> BottomAction.START_NEW
+                SimulationStatus.FAILED, SimulationStatus.PERMISSION_REVOKED -> null
+            }
+        }
+
+    private val failedBottomAction: BottomAction
+        get() = when {
+            healthConnectAvailable == false -> BottomAction.GO_CHECK
+            permissionGranted == false -> BottomAction.GO_ALLOW
+            // 權限被撤銷後尚未確認目前狀態：先引導去允許，「再試一次」放在次要操作
+            status == SimulationStatus.PERMISSION_REVOKED && permissionGranted == null -> BottomAction.GO_ALLOW
+            else -> BottomAction.RETRY
+        }
+
+    /**
+     * 次要操作：已開始的模擬（執行中、暫停、失敗）一律能「結束本次模擬」；
+     * 權限狀態未知而主按鈕不是「再試一次」時，另外保留「再試一次」。
+     */
+    val secondaryActions: List<SecondaryAction>
+        get() = buildList {
+            if (isFailed && permissionGranted == null && bottomAction != BottomAction.RETRY) add(SecondaryAction.RETRY)
+            if (status == SimulationStatus.RUNNING || status == SimulationStatus.PAUSED || isFailed) {
+                add(SecondaryAction.END)
+            }
+        }
+
     private val parsedTarget: Long?
         get() = targetInput.toLongOrNull()?.takeIf(StepSimulator::isValidTarget)
 }

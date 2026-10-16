@@ -1,7 +1,7 @@
 # 階段 9.5：UI/UX 重新設計計畫（定案版）
 
 > 交接用文件，階段 9.5 完成後刪除。決定與待辦見 `decisions.md`（優先），文案見 `copy.md`。
-> 視覺稿原始檔在 `mockups/`；畫布在 https://claude.ai/artifact/27XKZSAQYSxXGdZj31koEb（私人）。
+> 視覺稿原始檔在 `mockups/`。
 > ⚠️ 視覺稿畫在定案之前，與定案不同的地方：主按鈕沒有固定在底部、失敗卡片裡有紅色按鈕、文案是 v1、標籤是 14sp、狀態說明只有一行。**實作以本檔與 decisions.md 為準。**
 
 ## 定位

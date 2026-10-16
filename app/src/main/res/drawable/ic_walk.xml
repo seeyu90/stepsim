@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 走路（手繪；24dp 網格、線寬 2、圓頭；顏色由 Icon 的 tint 決定） -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:pathData="M11.2,4.5a1.8,1.8 0,1 1,3.6 0a1.8,1.8 0,1 1,-3.6 0z"
+        android:fillColor="#FFFFFFFF" />
+    <path
+        android:pathData="M9,21l2.2,-6.2L14,17v4M8,11l3,-3.2 3,2.6 3,0.8M11.2,7.8L10,14"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+</vector>

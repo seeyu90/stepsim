@@ -30,7 +30,7 @@ private fun Frame(content: @Composable () -> Unit) = StepSimTheme {
 private fun StressRing(size: StepRingSize = StepRingSize.FULL) = StepRing(
     progress = 0.99999f,
     value = "99,999",
-    caption = stringResource(R.string.sim_steps_suffix),
+    caption = stringResource(R.string.unit_steps),
     contentDescription = "",
     size = size,
 )
@@ -54,17 +54,17 @@ private fun RingStressSmallPreview() = Frame { StressRing() }
 @Preview(name = "圓環 · 準備（176dp）· 字體 2.0 倍", showBackground = true, fontScale = 2f)
 @Composable
 private fun RingCompactPreview() = Frame {
-    StepRing(0f, "0", stringResource(R.string.sim_steps_suffix), "", size = StepRingSize.COMPACT)
+    StepRing(0f, "0", stringResource(R.string.unit_steps), "", size = StepRingSize.COMPACT)
 }
 
 @Preview(name = "圓環 · 失敗（灰色進度弧）", showBackground = true)
 @Composable
 private fun RingFailedPreview() = Frame {
-    StepRing(0.61f, "3,050", stringResource(R.string.sim_steps_suffix), "", failed = true)
+    StepRing(0.61f, "3,050", stringResource(R.string.unit_steps), "", failed = true)
 }
 
 @Preview(name = "圓環 · 深色", showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
 private fun RingDarkPreview() = Frame {
-    StepRing(0.42f, "2,100", stringResource(R.string.sim_steps_suffix), "")
+    StepRing(0.42f, "2,100", stringResource(R.string.unit_steps), "")
 }
