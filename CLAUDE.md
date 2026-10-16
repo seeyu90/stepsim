@@ -74,6 +74,33 @@ StepSim（package `com.seeyu90.stepsim`）是「Health Connect 開發與 QA 測�
 - Health Connect 明細：紀錄方式的標示、鎖屏期間實際批次間隔
 - 同 clientRecordId 重送是否去重（需 debug 開關，尚未做）
 - 通知小圖示是否顯示成白色方塊
+- 前景服務對帳（commit a952fab）：
+  - 20 步目標跑完立刻重設再開始，連續 10 次；之後 logcat 不應出現 did not start 或 ForegroundService 相關錯誤
+  - 啟動失敗用的 debug 版（暫時拿掉 `HIGH_SAMPLING_RATE_SENSORS`，不要 commit）：開始 → 結束 → 再開始，應再次嘗試啟動；離開前景需求時「無法在背景執行」提示消失
+  - 還原權限的版本：暫停、繼續後提示消失、通知出現
+  - 觀察：重設後快速再開始時，logcat 是否出現連續兩次 onStartCommand（舊服務 onDestroy 的時序）
+- 順序：上面的啟動失敗驗證要在 specialUse 遷移之前完成；遷移後的失敗注入改為暫時拿掉 `FOREGROUND_SERVICE_SPECIAL_USE` 權限，並須在實機確認這樣會拋 SecurityException（目前未驗證）
+
+## Lint 現況
+- 0 error、17 warning；warning 上限 17，不得新增 error。每個 commit 回報 warning 數
+- 待辦（本輪不處理）：依賴版本更新（GradleDependency 5、NewerVersionAvailable 1）
+- UnusedResources 7、RedundantLabel 2 預計在階段 9.5 自然消失；ObsoleteSdkInt 1 未處理；HighSamplingRate 1 見下方階段 10 阻擋項
+
+## 階段 10 上架阻擋項（階段 10 完成前不得送審）
+- `HIGH_SAMPLING_RATE_SENSORS` 可能讓 Play 要求審核用途，甚至拒絕上架。lint（HighSamplingRate）訊息摘要：多數 App 不需要高取樣率感測器；需確認確實需要 > 200Hz；用途經 Play 政策團隊審核確認前，可能被拒絕上架
+- 本 App 不使用感測器，這項權限只是為了滿足 health 前景服務的啟動前提，用途說明站不住腳
+- 結論：**建議遷移到 specialUse**
+  - health 類型在 Play Console 的預設用途是「Health Data Sync」（範例為計步器、運動追蹤），StepSim 是寫入模擬步數的開發／QA 工具，不符合
+  - specialUse 的執行時前提為「None」，遷移後可拿掉 `HIGH_SAMPLING_RATE_SENSORS`
+  - 能否過審未知。備案：Play 版本不含背景執行，或改以 APK 直接分發
+  - 改完要在實機重新驗證前景服務的啟動與失敗路徑
+- 官方來源：
+  - Foreground service types（specialUse：權限 `FOREGROUND_SERVICE_SPECIAL_USE`、類型 `specialUse`、`PROPERTY_SPECIAL_USE_FGS_SUBTYPE` 說明在送審時審查、執行時前提 None；health 的執行時前提）：https://developer.android.com/develop/background-work/services/fgs/service-types
+  - Play Console 前景服務申報（Policy > App content：功能說明、被延後或中斷的影響、示範影片、用途分類；health 的用途為 Health Data Sync；所有類型都會被審查）：https://support.google.com/googleplay/android-developer/answer/13392821
+  - 前景服務逾時（目前只有 dataSync、mediaProcessing 每 24 小時 6 小時，shortService 另有限制；未列 specialUse 與 health）：https://developer.android.com/develop/background-work/services/fgs/timeout
+- 未解問題（查不到官方說明）：
+  - `HIGH_SAMPLING_RATE_SENSORS` 在 Play 審核的處理
+  - specialUse 的核准標準
 
 ## 驗收與進度
 - 「階段 N 完成」只在使用者手動驗收通過後才能寫入；程式碼寫完、測試通過都不算完成
@@ -81,4 +108,4 @@ StepSim（package `com.seeyu90.stepsim`）是「Health Connect 開發與 QA 測�
 
 ## 決定紀錄
 - 從最近使用清單滑掉 App 會終止模擬（已確認原因）：ASUS Android 15 上 logcat 顯示 `stop com.seeyu90.stepsim due to from pid <...> (com.asus.launcher)`，是桌面程式對套件執行強制停止。強制停止無法在 App 內攔截，也不會自動重啟；前景服務、START_STICKY、WorkManager 都無法防止。結論：不處理，改以提示使用者避免從最近使用清單滑掉；是否做 3b（狀態恢復）列為之後的選配。已寫入的批次不受影響。
-- health 類型前景服務的啟動前提（Android 14+）：以在 Manifest 宣告 `HIGH_SAMPLING_RATE_SENSORS` 滿足（一般權限，安裝時自動授予、使用者無法撤銷）；App 不讀取任何感測器。Health Connect 的 READ_STEPS／WRITE_STEPS 不在前提清單內，不能用來滿足。備案：階段 10 上架前改評估 `specialUse` 類型（需在 Play Console 申報用途）。
+- health 類型前景服務的啟動前提（Android 14+）：以在 Manifest 宣告 `HIGH_SAMPLING_RATE_SENSORS` 滿足（一般權限，安裝時自動授予、使用者無法撤銷）；App 不讀取任何感測器。Health Connect 的 READ_STEPS／WRITE_STEPS 不在前提清單內，不能用來滿足。備案：階段 10 上架前改評估 `specialUse` 類型（需在 Play Console 申報用途；見「階段 10 上架阻擋項」）。
