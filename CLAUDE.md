@@ -46,6 +46,10 @@ StepSim（package `com.seeyu90.stepsim`）是「Health Connect 開發與 QA 測�
 - 背景行為不能靠截圖判斷，看 `adb logcat`；階段 3 之後的背景行為必須用實機驗證
 - 檔案一律 UTF-8；PowerShell 讀中文檔用 `Get-Content -Encoding UTF8`
 
+## UI 備註
+- 目前 UI 為功能性版本，正式上線前需整體重新規劃，現階段不要花時間美化或微調
+- UI 重新規劃只動 ui/ 的 Composable；SimulatorUiState 與事件介面盡量保持穩定
+
 ## 開發階段與範圍
 
 嚴格依階段進行，不提前實作後續階段，也不順手重構既有程式。
@@ -54,8 +58,11 @@ StepSim（package `com.seeyu90.stepsim`）是「Health Connect 開發與 QA 測�
 2. 階段 2：模擬核心（步數寫入）
 3. 階段 3：背景執行（Foreground Service）
 4. 階段 4：MVP 驗收
+- 階段 9.5：UI/UX 重新規劃（正式版畫面、免責聲明與責任使用說明、無障礙、多語系）
 
-**目前進度：階段 1 完成，下一步為階段 2。**
+**目前進度：**
+- 階段 1：程式與單元測試完成，授權視窗待裝置驗證
+- 階段 2：UI 與模擬邏輯完成（Preview＋單元測試），Health Connect 實際寫入待裝置驗證
 
 ## 驗收與進度
 - 「階段 N 完成」只在使用者手動驗收通過後才能寫入；程式碼寫完、測試通過都不算完成

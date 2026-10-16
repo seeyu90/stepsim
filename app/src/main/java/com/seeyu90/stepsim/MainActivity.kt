@@ -9,9 +9,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
-import com.seeyu90.stepsim.ui.PermissionScreen
+import com.seeyu90.stepsim.ui.PermissionRoute
+import com.seeyu90.stepsim.ui.SimulatorRoute
 import com.seeyu90.stepsim.ui.theme.StepSimTheme
 
 class MainActivity : ComponentActivity() {
@@ -20,8 +25,20 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             StepSimTheme {
+                var showPermission by rememberSaveable { mutableStateOf(false) }
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    PermissionScreen(modifier = Modifier.padding(innerPadding))
+                    if (showPermission) {
+                        // 返回模擬頁時，SimulatorRoute 重新進入畫面會再檢查一次權限
+                        PermissionRoute(
+                            onBack = { showPermission = false },
+                            modifier = Modifier.padding(innerPadding),
+                        )
+                    } else {
+                        SimulatorRoute(
+                            onOpenPermission = { showPermission = true },
+                            modifier = Modifier.padding(innerPadding),
+                        )
+                    }
                 }
             }
         }
