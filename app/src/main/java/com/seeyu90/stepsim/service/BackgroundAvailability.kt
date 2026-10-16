@@ -1,9 +1,12 @@
 package com.seeyu90.stepsim.service
 
 import com.seeyu90.stepsim.simulator.SimulationStatus
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 
 /**
  * 前景服務的實際狀態。
@@ -27,8 +30,8 @@ class BackgroundAvailability {
     private val _status = MutableStateFlow(ForegroundServiceStatus())
     val status: StateFlow<ForegroundServiceStatus> = _status.asStateFlow()
 
-    private val _available = MutableStateFlow(true)
-    val available: StateFlow<Boolean> = _available.asStateFlow()
+    /** 前景服務是否可用（沒有啟動失敗紀錄）。由 [status] 推導，不另存狀態，兩者不可能不一致。 */
+    val available: Flow<Boolean> = status.map { it.failedAt == null }.distinctUntilChanged()
 
     /** App 呼叫 startForegroundService 之前：視為存活，避免重複啟動。 */
     fun reportStartRequested() = set(_status.value.copy(alive = true))
@@ -47,6 +50,5 @@ class BackgroundAvailability {
 
     private fun set(value: ForegroundServiceStatus) {
         _status.value = value
-        _available.value = value.failedAt == null
     }
 }

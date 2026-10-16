@@ -1,6 +1,8 @@
 package com.seeyu90.stepsim.service
 
 import com.seeyu90.stepsim.simulator.SimulationStatus
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -10,10 +12,13 @@ class BackgroundAvailabilityTest {
 
     private val availability = BackgroundAvailability()
 
+    /** available 由 status 推導，永遠與 status.failedAt 一致。 */
+    private fun available(): Boolean = runBlocking { availability.available.first() }
+
     @Test
     fun `initially not alive and available`() {
         assertEquals(ForegroundServiceStatus(alive = false, failedAt = null), availability.status.value)
-        assertTrue(availability.available.value)
+        assertTrue(available())
     }
 
     @Test
@@ -21,7 +26,7 @@ class BackgroundAvailabilityTest {
         availability.reportStartRequested()
 
         assertTrue(availability.status.value.alive)
-        assertTrue(availability.available.value)
+        assertTrue(available())
     }
 
     @Test
@@ -30,7 +35,7 @@ class BackgroundAvailabilityTest {
         availability.reportStartFailed(SimulationStatus.RUNNING)
 
         assertEquals(ForegroundServiceStatus(alive = false, failedAt = SimulationStatus.RUNNING), availability.status.value)
-        assertFalse(availability.available.value)
+        assertFalse(available())
     }
 
     @Test
@@ -40,7 +45,7 @@ class BackgroundAvailabilityTest {
         availability.reportStarted()
 
         assertEquals(ForegroundServiceStatus(alive = true, failedAt = null), availability.status.value)
-        assertTrue(availability.available.value)
+        assertTrue(available())
     }
 
     @Test
@@ -49,7 +54,7 @@ class BackgroundAvailabilityTest {
         availability.reportStopped()
 
         assertEquals(ForegroundServiceStatus(alive = false, failedAt = SimulationStatus.PAUSED), availability.status.value)
-        assertFalse(availability.available.value)
+        assertFalse(available())
 
         availability.reportStarted()
         availability.reportStopped()
@@ -62,6 +67,6 @@ class BackgroundAvailabilityTest {
         availability.updateFailedAt(nextFailedAt(SimulationStatus.READY, availability.status.value.failedAt))
 
         assertEquals(ForegroundServiceStatus(alive = false, failedAt = null), availability.status.value)
-        assertTrue(availability.available.value)
+        assertTrue(available())
     }
 }

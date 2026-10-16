@@ -15,6 +15,7 @@ import com.seeyu90.stepsim.simulator.SimulationStatus
 import com.seeyu90.stepsim.simulator.StepSimulator
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -22,6 +23,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -34,7 +36,7 @@ import kotlinx.coroutines.launch
 class SimulatorViewModel(
     private val controller: SimulationController,
     private val healthConnect: HealthConnectManager,
-    backgroundAvailable: StateFlow<Boolean> = MutableStateFlow(true),
+    backgroundAvailable: Flow<Boolean> = flowOf(true),
 ) : ViewModel() {
 
     private data class Form(val targetInput: String = "", val targetError: TargetInputError? = null)
