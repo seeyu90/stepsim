@@ -96,9 +96,9 @@ StepSim（package `com.seeyu90.stepsim`）是「Health Connect 開發與 QA 測�
 - 順序：上面的啟動失敗驗證要在 specialUse 遷移之前完成；遷移後的失敗注入改為暫時拿掉 `FOREGROUND_SERVICE_SPECIAL_USE` 權限，並須在實機確認這樣會拋 SecurityException（目前未驗證）
 
 ## Lint 現況
-- 0 error、17 warning；warning 上限 17，不得新增 error。每個 commit 回報 warning 數
+- 0 error、10 warning；warning 上限 10，不得新增 warning 或 error。每個 commit 回報 warning 數
 - 待辦（本輪不處理）：依賴版本更新（GradleDependency 5、NewerVersionAvailable 1）
-- UnusedResources 7、RedundantLabel 2 預計在階段 9.5 自然消失；ObsoleteSdkInt 1 未處理；HighSamplingRate 1 見下方階段 10 阻擋項
+- UnusedResources 7 已於階段 9.5 移除（範本顏色）；RedundantLabel 2 預計在階段 9.5 自然消失；ObsoleteSdkInt 1 未處理；HighSamplingRate 1 見下方階段 10 阻擋項
 
 ## 階段 10 上架阻擋項（階段 10 完成前不得送審）
 - `HIGH_SAMPLING_RATE_SENSORS` 可能讓 Play 要求審核用途，甚至拒絕上架。lint（HighSamplingRate）訊息摘要：多數 App 不需要高取樣率感測器；需確認確實需要 > 200Hz；用途經 Play 政策團隊審核確認前，可能被拒絕上架

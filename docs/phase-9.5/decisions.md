@@ -7,14 +7,14 @@
 - 分支：`phase-9.5/ui-redesign`，從 main `5a88a55`（階段 1～3 的 squash 合併）開始；目前 main 之上只有 commit 0 `ab0856a`。
 - 一個 commit 做一件事。每個 commit 完成後**停下來回報，等使用者確認**才做下一個。
 - 本輪例外：每個 commit 都 push 到 `phase-9.5/ui-redesign`。只限這個分支，不動 main 與其他分支，不開 PR。
-- 每個 commit 都要跑 `testDebugUnitTest`、`lint`、`assembleDebug`，並回報測試數、失敗數、lint warning 數。warning 上限 17，不得新增 error（見 CLAUDE.md「Lint 現況」）。
+- 每個 commit 都要跑 `testDebugUnitTest`、`lint`、`assembleDebug`，並回報測試數、失敗數、lint warning 數。warning 上限 10，不得新增 warning 或 error（見 CLAUDE.md「Lint 現況」）。
 - Preview 由使用者在 Android Studio 看；instrumented 測試與背景行為一律實機驗證。
 
 ## Commit 順序
 | # | 訊息 | 狀態 |
 |---|---|---|
-| 0 | `refactor(health): 移除未使用的 READ_STEPS 權限` | ✅ 已 push（`ab0856a`）；**尚未實際建置**，待本機驗證 |
-| 1 | `feat(ui): 湖水綠主題、共用元件、App icon 與通知小圖示` | 未開始 |
+| 0 | `refactor(health): 移除未使用的 READ_STEPS 權限` | ✅ 已 push（`ab0856a`）；雲端建置（鏡像）121 測試全過、lint 17；本機驗證待使用者回報 |
+| 1 | `feat(ui): 湖水綠主題、共用元件、App icon 與通知小圖示` | ✅ 已 push（`1642d3d`）；雲端建置（鏡像）121 測試全過、lint 10；本機驗證待使用者回報 |
 | 2 | `feat(ui): 主畫面改版` | 未開始 |
 | 3 | `feat(ui): 授權頁與 Rationale 改版` | 未開始 |
 | 4 | `feat(ui): 文案定稿、通知字串與禁用詞掃描測試` | 未開始 |
