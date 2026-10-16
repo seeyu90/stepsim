@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<title>走路模擬中 淺色</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:#00796B}a:hover{color:#005B50}
+</style>
+</helmet>
+<div style="width: 390px; height: 1240px; box-sizing: border-box; padding: 16px 20px 32px; background: #F6FAF9; color: #17201F; font-family: system-ui, -apple-system, 'Noto Sans TC', 'PingFang TC', sans-serif; display: flex; flex-direction: column; gap: 16px">
+
+  <div style="display: flex; align-items: center; justify-content: space-between; height: 56px">
+    <div style="font-size: 24px; line-height: 32px; font-weight: 600">StepSim</div>
+    <div style="display: flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border-radius: 16px; background: #D5F0EC; color: #00201C; font-size: 14px; font-weight: 600">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#00201C" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8" stroke-dasharray="3 3"></circle></svg>
+      <span>模擬資料</span>
+    </div>
+  </div>
+
+  <div style="display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 8px 0">
+    <div style="position: relative; width: 240px; height: 240px">
+      <svg width="240" height="240" viewBox="0 0 240 240" role="img" aria-label="進度 42%，已存入 2,100 步，目標 5,000 步">
+        <circle cx="120" cy="120" r="112" fill="none" stroke="#D5F0EC" stroke-width="16"></circle>
+        <circle cx="120" cy="120" r="112" fill="none" stroke="#00796B" stroke-width="16" stroke-linecap="round" stroke-dasharray="295.56 703.72" transform="rotate(-90 120 120)"></circle>
+      </svg>
+      <div style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center">
+        <div style="font-size: 56px; line-height: 64px; font-weight: 600; font-variant-numeric: tabular-nums">2,100</div>
+        <div style="font-size: 16px; color: #3F4947">步 · 42%</div>
+      </div>
+    </div>
+    <div style="font-size: 18px; line-height: 24px; font-weight: 500">目標 5,000 步 · 走路</div>
+  </div>
+
+  <div style="display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-radius: 16px; background: #D5F0EC; color: #00201C">
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#00201C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><circle cx="13" cy="4.5" r="1.8"></circle><path d="M9 21l2.2-6.2L14 17v4M8 11l3-3.2 3 2.6 3 .8M11.2 7.8L10 14"></path></svg>
+    <div style="display: flex; flex-direction: column">
+      <div style="font-size: 18px; line-height: 24px; font-weight: 600">走路模擬中</div>
+      <div style="font-size: 16px; line-height: 22px">還剩約 29 分鐘</div>
+    </div>
+  </div>
+
+  <button style="height: 56px; border: 0; border-radius: 28px; background: #00796B; color: #FFFFFF; font: inherit; font-size: 16px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 8px">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="#FFFFFF" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1"></rect><rect x="14" y="5" width="4" height="14" rx="1"></rect></svg>暫停
+  </button>
+  <button style="height: 48px; border: 0; border-radius: 24px; background: transparent; color: #00796B; font: inherit; font-size: 16px; font-weight: 600">結束本次模擬</button>
+
+  <div style="background: #FFFFFF; border: 1px solid #DCE5E3; border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 12px">
+    <div style="font-size: 18px; line-height: 24px; font-weight: 600">使用小提醒</div>
+    <div style="display: flex; gap: 12px">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#00796B" stroke-width="2" stroke-linecap="round" aria-hidden="true" style="flex: none; margin-top: 1px"><circle cx="12" cy="12" r="9"></circle><path d="M12 11v6M12 7.5v.01"></path></svg>
+      <div style="font-size: 16px; line-height: 24px">離開時請按 Home 鍵，不要從「最近使用」把 StepSim 滑掉，否則模擬會中斷。</div>
+    </div>
+    <div style="display: flex; gap: 12px">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#00796B" stroke-width="2" stroke-linecap="round" aria-hidden="true" style="flex: none; margin-top: 1px"><circle cx="12" cy="12" r="9"></circle><path d="M12 11v6M12 7.5v.01"></path></svg>
+      <div style="font-size: 16px; line-height: 24px">離開後會在背景繼續，可以從通知列暫停或結束。</div>
+    </div>
+  </div>
+
+  <div style="display: flex; flex-direction: column; gap: 4px; padding: 0 4px">
+    <div style="font-size: 16px; line-height: 24px; color: #3F4947">這些是依你設定模擬出來的步數，以「手動輸入」存入 Health Connect，不是感測器偵測到的真實步數。</div>
+    <a href="#guide" style="display: inline-flex; align-items: center; min-height: 48px; font-size: 16px; font-weight: 600">使用說明與注意事項</a>
+  </div>
+
+  <div style="background: #FFFFFF; border: 1px solid #DCE5E3; border-radius: 16px; overflow: hidden">
+    <button aria-expanded="true" style="width: 100%; min-height: 56px; padding: 0 16px; border: 0; background: transparent; color: #17201F; font: inherit; font-size: 16px; font-weight: 600; display: flex; align-items: center; justify-content: space-between">
+      <span>詳細資訊</span>
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3F4947" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 15l6-6 6 6"></path></svg>
+    </button>
+    <div style="padding: 0 16px 16px; display: flex; flex-direction: column; gap: 8px; font-size: 16px; line-height: 22px; color: #3F4947">
+      <div style="display: flex; justify-content: space-between"><span>已存入批次</span><span style="color: #17201F; font-variant-numeric: tabular-nums">21 批</span></div>
+      <div style="display: flex; justify-content: space-between"><span>最後存入</span><span style="color: #17201F; font-variant-numeric: tabular-nums">下午 2:32</span></div>
+    </div>
+  </div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":1240}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>
