@@ -1,5 +1,6 @@
 package com.seeyu90.stepsim.ui
 
+import com.seeyu90.stepsim.service.shouldRunForeground
 import com.seeyu90.stepsim.simulator.Gait
 import com.seeyu90.stepsim.simulator.SimulationState
 import com.seeyu90.stepsim.simulator.SimulationStatus
@@ -42,9 +43,9 @@ data class SimulatorUiState(
 
     val showMainContent: Boolean get() = accessNotice == AccessNotice.NONE
 
-    /** 模擬進行中（含暫停、失敗）但前景服務無法啟動時，提示「無法在背景執行」。 */
+    /** 模擬進行中（含暫停、失敗）但前景服務無法啟動時，提示「無法在背景執行」。狀態範圍與前景服務一致。 */
     val showBackgroundUnavailable: Boolean
-        get() = !backgroundAvailable && (status == SimulationStatus.RUNNING || status == SimulationStatus.PAUSED || isFailed)
+        get() = !backgroundAvailable && shouldRunForeground(status)
 
     /** 失敗時一律能「結束並重設」：主要內容被提示取代時，另外單獨顯示重設按鈕。 */
     val showStandaloneReset: Boolean get() = isFailed && !showMainContent
