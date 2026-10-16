@@ -45,7 +45,7 @@
     <string name="sim_estimate_remaining">預計剩餘 約 %1$d 分鐘</string>
     <string name="sim_batches_last">已寫入 %1$d 批 · 最後寫入 %2$s</string>
     <string name="sim_batches_range">共寫入 %1$d 批 · %2$s – %3$s</string>
-    <string name="sim_foreground_hint">離開 App 後會在背景繼續，可從通知暫停或結束本次模擬</string>
+    <string name="sim_foreground_hint">離開 App 後會在背景繼續，可從通知暫停或結束本次模擬。請直接回到主畫面離開，不要從最近使用清單滑掉 App，部分裝置會因此終止模擬</string>
     <string name="sim_background_unavailable">無法在背景執行：離開 App 後模擬可能中斷，請保持 App 在前景</string>
     <string name="sim_paused_hint">暫停期間不寫入，繼續後從當下時間接續</string>
     <string name="sim_failed_title">寫入失敗（第 %1$d 批）</string>
