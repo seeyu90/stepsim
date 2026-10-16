@@ -20,6 +20,7 @@ import com.seeyu90.stepsim.R
 import com.seeyu90.stepsim.StepSimApp
 import com.seeyu90.stepsim.simulator.Gait
 import com.seeyu90.stepsim.simulator.SimulationState
+import com.seeyu90.stepsim.simulator.SimulationStatus
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -29,13 +30,17 @@ import kotlinx.coroutines.launch
 
 /**
  * 模擬執行中保持程序存活並顯示常駐通知（type = health）。模擬本身由 [StepSimApp.simulation] 持有，
- * 此服務只依 [shouldRunForeground] 與 [notificationModel] 顯示通知、轉送通知按鈕的指令。
+ * 此服務只依 [reconcileForeground] 與 [notificationModel] 顯示通知、轉送通知按鈕的指令、停止自己；
+ * 啟動由 [StepSimApp] 的對帳迴圈負責。
  */
 class SimulationService : Service() {
 
     private val app get() = application as StepSimApp
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var observeJob: Job? = null
+
+    /** 最近一次 onStartCommand 的 startId；只在主執行緒讀寫，於呼叫 stopSelf 的當下讀取。 */
+    private var lastStartId = 0
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -46,6 +51,7 @@ class SimulationService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         // 先呼叫 startForeground：以 startForegroundService 啟動後必須盡快進入前景
+        lastStartId = startId
         val state = app.simulation.state.value
         val foregroundStarted = try {
             ServiceCompat.startForeground(this, NOTIFICATION_ID, buildNotification(notificationModel(state)), foregroundType())
@@ -54,7 +60,7 @@ class SimulationService : Service() {
         } catch (e: Exception) {
             // 例如未符合 health 類型的啟動前提（SecurityException）或背景啟動限制
             Log.w(TAG, "startForeground failed", e)
-            app.backgroundAvailability.reportStartFailed()
+            app.backgroundAvailability.reportStartFailed(state.status)
             false
         }
 
@@ -68,17 +74,22 @@ class SimulationService : Service() {
 
         // 前景啟動失敗，或模擬不在需要前景的狀態（例如程序被殺後重啟）：立刻停止，不留空通知
         if (outcome.stopSelf) {
-            if (foregroundStarted) stopForegroundAndSelf(state) else stopSelf()
+            if (foregroundStarted) stopForegroundAndSelf(state) else stopSelf(startId)
             return START_NOT_STICKY
         }
 
         if (observeJob == null) {
             observeJob = scope.launch {
                 app.simulation.state.collect { current ->
-                    if (shouldRunForeground(current.status)) {
-                        notify(buildNotification(notificationModel(current)))
-                    } else {
+                    val action = reconcileForeground(
+                        current.status,
+                        serviceAlive = true,
+                        failedAt = app.backgroundAvailability.status.value.failedAt,
+                    )
+                    if (action == ServiceAction.STOP) {
                         stopForegroundAndSelf(current)
+                    } else {
+                        notify(buildNotification(notificationModel(current)))
                     }
                 }
             }
@@ -88,10 +99,15 @@ class SimulationService : Service() {
 
     override fun onDestroy() {
         scope.cancel()
+        app.backgroundAvailability.reportStopped()
         super.onDestroy()
     }
 
-    /** [snapshot] 為觸發停止當下的狀態；不可在此重新讀取目前狀態（可能已被重設）。 */
+    /**
+     * [snapshot] 為觸發停止當下的狀態；不可在此重新讀取目前狀態（可能已被重設）。
+     * 以最新的 startId 停止：App 若已送出新的啟動、而對應的 onStartCommand 尚未執行，stopSelf 不會生效，
+     * 由新的 onStartCommand 重新進入前景後再判斷。
+     */
     private fun stopForegroundAndSelf(snapshot: SimulationState) {
         val model = stopNotificationModel(snapshot)
         if (model != null) {
@@ -101,7 +117,7 @@ class SimulationService : Service() {
         } else {
             ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
         }
-        stopSelf()
+        stopSelf(lastStartId)
     }
 
     private fun notificationAction(intentAction: String?): NotificationAction? = when (intentAction) {
@@ -214,14 +230,15 @@ class SimulationService : Service() {
         private const val ACTION_RESUME = "com.seeyu90.stepsim.action.RESUME"
         private const val ACTION_STOP = "com.seeyu90.stepsim.action.STOP"
 
-        /** 啟動前景服務；失敗時記錄為無法在背景執行，不崩潰。 */
-        fun start(context: Context, availability: BackgroundAvailability) {
+        /** 啟動前景服務；失敗時記錄為無法在背景執行，不崩潰。只能在主執行緒呼叫。 */
+        fun start(context: Context, availability: BackgroundAvailability, status: SimulationStatus) {
+            availability.reportStartRequested()
             try {
                 ContextCompat.startForegroundService(context, Intent(context, SimulationService::class.java))
             } catch (e: Exception) {
                 // Android 12+ 背景啟動限制為 ForegroundServiceStartNotAllowedException（IllegalStateException 子類）
                 Log.w(TAG, "startForegroundService failed", e)
-                availability.reportStartFailed()
+                availability.reportStartFailed(status)
             }
         }
     }

@@ -127,6 +127,73 @@ class ForegroundPolicyTest {
     }
 
     @Test
+    fun `reconcile starts the service when foreground is needed and the service is not alive`() {
+        for (status in SimulationStatus.entries.filter(::shouldRunForeground)) {
+            assertEquals("status $status", ServiceAction.START, reconcileForeground(status, serviceAlive = false, failedAt = null))
+        }
+    }
+
+    @Test
+    fun `reconcile does not start twice while the service is alive`() {
+        for (status in SimulationStatus.entries.filter(::shouldRunForeground)) {
+            assertEquals("status $status", ServiceAction.NONE, reconcileForeground(status, serviceAlive = true, failedAt = null))
+        }
+    }
+
+    @Test
+    fun `reconcile stops the service when foreground is no longer needed`() {
+        for (status in SimulationStatus.entries.filterNot(::shouldRunForeground)) {
+            assertEquals("status $status", ServiceAction.STOP, reconcileForeground(status, serviceAlive = true, failedAt = null))
+            assertEquals("status $status", ServiceAction.NONE, reconcileForeground(status, serviceAlive = false, failedAt = null))
+        }
+    }
+
+    @Test
+    fun `failed start is not retried in the same status kind`() {
+        assertEquals(
+            ServiceAction.NONE,
+            reconcileForeground(SimulationStatus.RUNNING, serviceAlive = false, failedAt = SimulationStatus.RUNNING),
+        )
+    }
+
+    @Test
+    fun `failed start is retried when the status kind changes`() {
+        // 失敗於 RUNNING → 暫停；失敗於 PAUSED → 繼續；失敗於 RUNNING → 寫入失敗
+        val cases = listOf(
+            SimulationStatus.RUNNING to SimulationStatus.PAUSED,
+            SimulationStatus.PAUSED to SimulationStatus.RUNNING,
+            SimulationStatus.RUNNING to SimulationStatus.FAILED,
+            SimulationStatus.FAILED to SimulationStatus.RUNNING,
+        )
+        for ((failedAt, now) in cases) {
+            val step = appReconcile(now, serviceAlive = false, failedAt = failedAt)
+            assertTrue("failedAt=$failedAt now=$now", step.start)
+        }
+    }
+
+    @Test
+    fun `failure record is kept while foreground is needed and cleared when it is not`() {
+        for (status in SimulationStatus.entries) {
+            val expected = if (shouldRunForeground(status)) SimulationStatus.RUNNING else null
+            assertEquals("status $status", expected, nextFailedAt(status, SimulationStatus.RUNNING))
+        }
+    }
+
+    @Test
+    fun `new run after a failed start tries to start again`() {
+        // 開始時啟動失敗（failedAt = RUNNING）→ 結束（READY）→ 再開始（RUNNING）：第二次 RUNNING 要再嘗試
+        var failedAt: SimulationStatus? = SimulationStatus.RUNNING
+
+        val ended = appReconcile(SimulationStatus.READY, serviceAlive = false, failedAt = failedAt)
+        assertFalse(ended.start)
+        assertNull("leaving foreground clears the failure", ended.failedAt)
+        failedAt = ended.failedAt
+
+        val restarted = appReconcile(SimulationStatus.RUNNING, serviceAlive = false, failedAt = failedAt)
+        assertTrue(restarted.start)
+    }
+
+    @Test
     fun `service keeps running only when started and foreground is needed`() {
         for (status in SimulationStatus.entries) {
             assertEquals(

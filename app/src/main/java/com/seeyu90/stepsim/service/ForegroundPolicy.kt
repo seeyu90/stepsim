@@ -83,5 +83,43 @@ fun startCommandOutcome(
     status: SimulationStatus,
 ): StartCommandOutcome = StartCommandOutcome(
     command = action,
-    stopSelf = !foregroundStarted || !shouldRunForeground(status),
+    stopSelf = !foregroundStarted ||
+        reconcileForeground(status, serviceAlive = true, failedAt = null) == ServiceAction.STOP,
 )
+
+enum class ServiceAction { START, STOP, NONE }
+
+/**
+ * 前景服務的對帳：以「目前的值」比較目標（現在需不需要前景）與實際（服務是否存活），不一致就修正。
+ * App 端只執行 START，服務端只執行 STOP（stopSelf(startId)），兩端共用此函式。
+ *
+ * [failedAt]：上次啟動失敗時的狀態種類（null 代表沒有失敗紀錄）。同一種狀態不重試，避免迴圈；
+ * 狀態種類改變（暫停、繼續、重試等）才再嘗試。
+ */
+fun reconcileForeground(
+    status: SimulationStatus,
+    serviceAlive: Boolean,
+    failedAt: SimulationStatus?,
+): ServiceAction {
+    val needed = shouldRunForeground(status)
+    return when {
+        needed && !serviceAlive -> if (failedAt == status) ServiceAction.NONE else ServiceAction.START
+        !needed && serviceAlive -> ServiceAction.STOP
+        else -> ServiceAction.NONE
+    }
+}
+
+/** 離開前景需求時清掉失敗紀錄：下一輪模擬要重新嘗試啟動，「無法在背景執行」提示也要消失。 */
+fun nextFailedAt(status: SimulationStatus, failedAt: SimulationStatus?): SimulationStatus? =
+    if (shouldRunForeground(status)) failedAt else null
+
+data class AppReconcile(val failedAt: SimulationStatus?, val start: Boolean)
+
+/** App 端的一次對帳：先套用 [nextFailedAt]，再依 [reconcileForeground] 決定是否啟動服務。 */
+fun appReconcile(status: SimulationStatus, serviceAlive: Boolean, failedAt: SimulationStatus?): AppReconcile {
+    val next = nextFailedAt(status, failedAt)
+    return AppReconcile(
+        failedAt = next,
+        start = reconcileForeground(status, serviceAlive, next) == ServiceAction.START,
+    )
+}
