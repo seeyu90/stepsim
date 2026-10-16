@@ -113,6 +113,46 @@ class SimulatorViewModelTest {
     }
 
     @Test
+    fun `leaving the app pauses when the foreground service could not start`() = vmTest {
+        startSimulation()
+        backgroundAvailable.value = false
+        runCurrent()
+        advanceTimeBy(10_001)
+
+        viewModel.onAppStopped(isChangingConfigurations = false)
+        runCurrent()
+        assertEquals(SimulationStatus.PAUSED, ui.status)
+
+        val writes = writer.written.size
+        advanceTimeBy(60_000)
+        assertEquals("no writes while paused", writes, writer.written.size)
+    }
+
+    @Test
+    fun `leaving the app keeps running when the foreground service is available`() = vmTest {
+        startSimulation()
+
+        viewModel.onAppStopped(isChangingConfigurations = false)
+        runCurrent()
+        assertEquals(SimulationStatus.RUNNING, ui.status)
+
+        advanceTimeBy(10_001)
+        assertEquals(1, writer.written.size)
+    }
+
+    @Test
+    fun `configuration change never pauses even without the foreground service`() = vmTest {
+        startSimulation()
+        backgroundAvailable.value = false
+        runCurrent()
+
+        viewModel.onAppStopped(isChangingConfigurations = true)
+        runCurrent()
+
+        assertEquals(SimulationStatus.RUNNING, ui.status)
+    }
+
+    @Test
     fun `recreated view model restores the target held by the process-level simulation`() = vmTest {
         viewModel.refreshPermission()
         viewModel.onEvent(SimulatorEvent.TargetInputChanged("5000"))

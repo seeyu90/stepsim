@@ -85,6 +85,15 @@ class SimulatorViewModel(
         }
     }
 
+    /**
+     * 畫面離開前景（含螢幕關閉）時，若前景服務無法啟動就暫停：此時沒有前景服務保護程序，繼續跑只會被凍結或終止，
+     * 而「無法在背景執行」的警告離開後也看不到。前景服務可用時模擬本來就該在背景繼續，不暫停；旋轉等設定變更一律不暫停。
+     */
+    fun onAppStopped(isChangingConfigurations: Boolean) {
+        if (isChangingConfigurations) return
+        if (!state.value.backgroundAvailable) controller.pause()
+    }
+
     /** 指令為非同步：等模擬確實回到 READY / IDLE 後再檢查一次權限。 */
     private fun reset() {
         controller.reset()

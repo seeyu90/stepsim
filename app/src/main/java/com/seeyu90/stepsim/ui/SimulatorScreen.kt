@@ -1,7 +1,9 @@
 package com.seeyu90.stepsim.ui
 
 import android.Manifest
+import android.app.Activity
 import android.content.Context
+import android.content.ContextWrapper
 import android.content.pm.PackageManager
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -64,6 +66,10 @@ fun SimulatorRoute(
     // 進入畫面（含從授權頁返回）與回到前景時重新檢查權限
     LaunchedEffect(Unit) { viewModel.refreshPermission() }
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.refreshPermission() }
+    // 前景服務無法啟動時，離開畫面就暫停（沒有前景服務保護，繼續跑只會被凍結或終止）；旋轉等設定變更不算離開
+    LifecycleEventEffect(Lifecycle.Event.ON_STOP) {
+        viewModel.onAppStopped(context.findActivity()?.isChangingConfigurations == true)
+    }
 
     // 不論允許或拒絕都開始模擬：拒絕時前景服務照常執行，通知只出現在工作管理員
     val notificationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
@@ -372,3 +378,9 @@ private val timeFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:m
 private fun formatSteps(steps: Long): String = "%,d".format(steps)
 
 private fun formatTime(instant: Instant): String = timeFormatter.format(instant.atZone(ZoneId.systemDefault()))
+
+private tailrec fun Context.findActivity(): Activity? = when (this) {
+    is Activity -> this
+    is ContextWrapper -> baseContext.findActivity()
+    else -> null
+}
