@@ -19,7 +19,7 @@ import com.seeyu90.stepsim.MainActivity
 import com.seeyu90.stepsim.R
 import com.seeyu90.stepsim.StepSimApp
 import com.seeyu90.stepsim.simulator.Gait
-import com.seeyu90.stepsim.simulator.SimulationStatus
+import com.seeyu90.stepsim.simulator.SimulationState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -47,26 +47,28 @@ class SimulationService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         // 先呼叫 startForeground：以 startForegroundService 啟動後必須盡快進入前景
         val state = app.simulation.state.value
-        try {
+        val foregroundStarted = try {
             ServiceCompat.startForeground(this, NOTIFICATION_ID, buildNotification(notificationModel(state)), foregroundType())
             app.backgroundAvailability.reportStarted()
+            true
         } catch (e: Exception) {
             // 例如未符合 health 類型的啟動前提（SecurityException）或背景啟動限制
             Log.w(TAG, "startForeground failed", e)
             app.backgroundAvailability.reportStartFailed()
-            stopSelf()
-            return START_NOT_STICKY
+            false
         }
 
-        when (intent?.action) {
-            ACTION_PAUSE -> app.simulation.pause()
-            ACTION_RESUME -> app.simulation.resume()
-            ACTION_STOP -> app.simulation.reset()
+        val outcome = startCommandOutcome(notificationAction(intent?.action), foregroundStarted, state.status)
+        when (outcome.command) {
+            NotificationAction.PAUSE -> app.simulation.pause()
+            NotificationAction.RESUME -> app.simulation.resume()
+            NotificationAction.STOP -> app.simulation.reset()
+            null -> Unit
         }
 
-        // 程序被殺後重啟等情況：模擬不在需要前景的狀態，立刻停止，不留空通知
-        if (!shouldRunForeground(state.status)) {
-            stopForegroundAndSelf(state.status)
+        // 前景啟動失敗，或模擬不在需要前景的狀態（例如程序被殺後重啟）：立刻停止，不留空通知
+        if (outcome.stopSelf) {
+            if (foregroundStarted) stopForegroundAndSelf(state) else stopSelf()
             return START_NOT_STICKY
         }
 
@@ -76,7 +78,7 @@ class SimulationService : Service() {
                     if (shouldRunForeground(current.status)) {
                         notify(buildNotification(notificationModel(current)))
                     } else {
-                        stopForegroundAndSelf(current.status)
+                        stopForegroundAndSelf(current)
                     }
                 }
             }
@@ -89,15 +91,24 @@ class SimulationService : Service() {
         super.onDestroy()
     }
 
-    private fun stopForegroundAndSelf(status: SimulationStatus) {
-        if (status == SimulationStatus.COMPLETED) {
+    /** [snapshot] 為觸發停止當下的狀態；不可在此重新讀取目前狀態（可能已被重設）。 */
+    private fun stopForegroundAndSelf(snapshot: SimulationState) {
+        val model = stopNotificationModel(snapshot)
+        if (model != null) {
             // 完成：結束前景，但留下一則可滑掉的「已完成」通知
-            notify(buildNotification(notificationModel(app.simulation.state.value)))
+            notify(buildNotification(model))
             ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_DETACH)
         } else {
             ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
         }
         stopSelf()
+    }
+
+    private fun notificationAction(intentAction: String?): NotificationAction? = when (intentAction) {
+        ACTION_PAUSE -> NotificationAction.PAUSE
+        ACTION_RESUME -> NotificationAction.RESUME
+        ACTION_STOP -> NotificationAction.STOP
+        else -> null
     }
 
     private fun foregroundType(): Int =

@@ -86,4 +86,54 @@ class ForegroundPolicyTest {
         assertEquals(0, notificationModel(state(SimulationStatus.RUNNING, written = 0))!!.percent)
         assertEquals(99, notificationModel(state(SimulationStatus.RUNNING, written = 99_999, target = 100_000))!!.percent)
     }
+
+    @Test
+    fun `stop notification comes from the completed snapshot and is dismissible`() {
+        val model = stopNotificationModel(state(SimulationStatus.COMPLETED, written = 5_000))!!
+
+        assertEquals(NotificationKind.COMPLETED, model.kind)
+        assertEquals(5_000, model.writtenSteps)
+        assertFalse(model.ongoing)
+    }
+
+    @Test
+    fun `stop leaves no notification for any snapshot other than completed`() {
+        // 例如完成後立刻重設：快照已是 READY，不可留下常駐的「啟動中」
+        for (status in SimulationStatus.entries - SimulationStatus.COMPLETED) {
+            assertNull("status $status", stopNotificationModel(state(status)))
+        }
+        assertNull(stopNotificationModel(state(SimulationStatus.IDLE, written = 0, target = null)))
+    }
+
+    @Test
+    fun `button command is forwarded even when foreground start fails`() {
+        for (action in NotificationAction.entries) {
+            for (started in listOf(true, false)) {
+                assertEquals(
+                    "action=$action started=$started",
+                    action,
+                    startCommandOutcome(action, started, SimulationStatus.RUNNING).command,
+                )
+            }
+        }
+        assertNull(startCommandOutcome(null, true, SimulationStatus.RUNNING).command)
+    }
+
+    @Test
+    fun `service stops when foreground start fails`() {
+        for (status in SimulationStatus.entries) {
+            assertTrue("status $status", startCommandOutcome(NotificationAction.STOP, false, status).stopSelf)
+        }
+    }
+
+    @Test
+    fun `service keeps running only when started and foreground is needed`() {
+        for (status in SimulationStatus.entries) {
+            assertEquals(
+                "status $status",
+                !shouldRunForeground(status),
+                startCommandOutcome(null, true, status).stopSelf,
+            )
+        }
+    }
 }

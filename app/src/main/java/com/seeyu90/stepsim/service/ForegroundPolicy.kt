@@ -62,3 +62,26 @@ fun notificationModel(state: SimulationState): NotificationModel? {
         ongoing = kind != NotificationKind.COMPLETED,
     )
 }
+
+/**
+ * 停止服務時要留下的通知，依「觸發停止當下的狀態快照」決定：只有 COMPLETED 留下可滑掉的完成通知，
+ * 其他狀態回傳 null（不留通知，不可顯示成常駐的「啟動中」）。
+ */
+fun stopNotificationModel(snapshot: SimulationState): NotificationModel? =
+    if (snapshot.status == SimulationStatus.COMPLETED) notificationModel(snapshot) else null
+
+data class StartCommandOutcome(
+    /** 要轉送給模擬的通知按鈕指令；不因前景啟動失敗而丟失。 */
+    val command: NotificationAction?,
+    val stopSelf: Boolean,
+)
+
+/** onStartCommand 的決策：按鈕指令一律轉送；前景啟動失敗或模擬不需要前景時停止服務。 */
+fun startCommandOutcome(
+    action: NotificationAction?,
+    foregroundStarted: Boolean,
+    status: SimulationStatus,
+): StartCommandOutcome = StartCommandOutcome(
+    command = action,
+    stopSelf = !foregroundStarted || !shouldRunForeground(status),
+)
