@@ -30,7 +30,7 @@ import com.seeyu90.stepsim.health.HealthConnectAvailability
 @Composable
 fun PermissionScreen(
     modifier: Modifier = Modifier,
-    viewModel: PermissionViewModel = viewModel(),
+    viewModel: PermissionViewModel = viewModel(factory = PermissionViewModel.Factory),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val context = LocalContext.current

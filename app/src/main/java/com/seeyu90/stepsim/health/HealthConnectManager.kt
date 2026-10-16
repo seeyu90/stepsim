@@ -1,59 +1,26 @@
 package com.seeyu90.stepsim.health
 
-import android.content.Context
 import android.content.Intent
 import androidx.activity.result.contract.ActivityResultContract
-import androidx.core.net.toUri
-import androidx.health.connect.client.HealthConnectClient
-import androidx.health.connect.client.PermissionController
 import androidx.health.connect.client.permission.HealthPermission
 import androidx.health.connect.client.records.StepsRecord
 
-/** 封裝所有 Health Connect SDK 存取；其他套件不得直接使用 HC 類別。 */
-class HealthConnectManager(context: Context) {
+/** 封裝所有 Health Connect SDK 存取；其他套件不得直接使用 HC 類別。實作見 [AndroidHealthConnectManager]。 */
+interface HealthConnectManager {
 
-    private val appContext = context.applicationContext
+    fun availability(): HealthConnectAvailability
 
-    private val client: HealthConnectClient by lazy { HealthConnectClient.getOrCreate(appContext) }
+    suspend fun grantedPermissions(): Set<String>
 
-    fun availability(): HealthConnectAvailability =
-        when (HealthConnectClient.getSdkStatus(appContext, PROVIDER_PACKAGE)) {
-            HealthConnectClient.SDK_AVAILABLE -> HealthConnectAvailability.AVAILABLE
-            HealthConnectClient.SDK_UNAVAILABLE_PROVIDER_UPDATE_REQUIRED -> HealthConnectAvailability.NEEDS_UPDATE
-            else -> if (isProviderInstalled()) {
-                HealthConnectAvailability.NOT_SUPPORTED
-            } else {
-                HealthConnectAvailability.NEEDS_INSTALL
-            }
-        }
+    suspend fun hasAllPermissions(): Boolean
 
-    suspend fun grantedPermissions(): Set<String> =
-        client.permissionController.getGrantedPermissions()
-
-    suspend fun hasAllPermissions(): Boolean = grantedPermissions().containsAll(PERMISSIONS)
-
-    fun createPermissionRequestContract(): ActivityResultContract<Set<String>, Set<String>> =
-        PermissionController.createRequestPermissionResultContract()
+    fun createPermissionRequestContract(): ActivityResultContract<Set<String>, Set<String>>
 
     /** 導向 Play Store 安裝 / 更新 Health Connect。 */
-    fun installIntent(): Intent =
-        Intent(Intent.ACTION_VIEW).apply {
-            setPackage("com.android.vending")
-            data = "market://details?id=$PROVIDER_PACKAGE&url=healthconnect%3A%2F%2Fonboarding".toUri()
-            putExtra("overlay", true)
-            putExtra("callerId", appContext.packageName)
-        }
+    fun installIntent(): Intent
 
     /** 開啟 Health Connect 設定頁，讓使用者手動管理本 App 的權限。 */
-    fun settingsIntent(): Intent = Intent(HealthConnectClient.ACTION_HEALTH_CONNECT_SETTINGS)
-
-    private fun isProviderInstalled(): Boolean =
-        try {
-            appContext.packageManager.getPackageInfo(PROVIDER_PACKAGE, 0)
-            true
-        } catch (_: Exception) {
-            false
-        }
+    fun settingsIntent(): Intent
 
     companion object {
         const val PROVIDER_PACKAGE = "com.google.android.apps.healthdata"
