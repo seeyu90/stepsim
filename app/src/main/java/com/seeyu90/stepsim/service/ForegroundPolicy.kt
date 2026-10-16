@@ -83,15 +83,14 @@ fun startCommandOutcome(
     status: SimulationStatus,
 ): StartCommandOutcome = StartCommandOutcome(
     command = action,
-    stopSelf = !foregroundStarted ||
-        reconcileForeground(status, serviceAlive = true, failedAt = null) == ServiceAction.STOP,
+    stopSelf = !foregroundStarted || !shouldRunForeground(status),
 )
 
 enum class ServiceAction { START, STOP, NONE }
 
 /**
  * 前景服務的對帳：以「目前的值」比較目標（現在需不需要前景）與實際（服務是否存活），不一致就修正。
- * App 端只執行 START，服務端只執行 STOP（stopSelf(startId)），兩端共用此函式。
+ * 只有 App 端使用，且只執行 START；服務端的停止（stopSelf(startId)）直接依 [shouldRunForeground] 判斷。
  *
  * [failedAt]：上次啟動失敗時的狀態種類（null 代表沒有失敗紀錄）。同一種狀態不重試，避免迴圈；
  * 狀態種類改變（暫停、繼續、重試等）才再嘗試。

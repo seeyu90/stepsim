@@ -30,7 +30,7 @@ import kotlinx.coroutines.launch
 
 /**
  * 模擬執行中保持程序存活並顯示常駐通知（type = health）。模擬本身由 [StepSimApp.simulation] 持有，
- * 此服務只依 [reconcileForeground] 與 [notificationModel] 顯示通知、轉送通知按鈕的指令、停止自己；
+ * 此服務只依 [shouldRunForeground] 與 [notificationModel] 顯示通知、轉送通知按鈕的指令、停止自己；
  * 啟動由 [StepSimApp] 的對帳迴圈負責。
  */
 class SimulationService : Service() {
@@ -81,12 +81,7 @@ class SimulationService : Service() {
         if (observeJob == null) {
             observeJob = scope.launch {
                 app.simulation.state.collect { current ->
-                    val action = reconcileForeground(
-                        current.status,
-                        serviceAlive = true,
-                        failedAt = app.backgroundAvailability.status.value.failedAt,
-                    )
-                    if (action == ServiceAction.STOP) {
+                    if (!shouldRunForeground(current.status)) {
                         stopForegroundAndSelf(current)
                     } else {
                         notify(buildNotification(notificationModel(current)))
