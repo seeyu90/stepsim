@@ -1,5 +1,6 @@
 package com.seeyu90.stepsim.simulator
 
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
@@ -64,18 +65,25 @@ class SimulationRunner(
         scope.cancel()
     }
 
-    /** 狀態已變（例如連點、通知與畫面同時操作）而不合法的指令直接忽略。 */
     private fun command(action: suspend () -> Unit) {
-        scope.launch {
-            try {
-                action()
-            } catch (_: IllegalStateException) {
-            } catch (_: IllegalArgumentException) {
-            }
-        }
+        scope.launch { ignoreInvalidCommand(action) }
     }
 
     companion object {
         const val TICK_INTERVAL_MILLIS = 10_000L
+    }
+}
+
+/**
+ * 狀態已變（例如連點、通知與畫面同時操作）而不合法的指令直接忽略。
+ * CancellationException 在 JVM 上是 IllegalStateException 的子類別，必須先重新拋出，取消才會傳遞出去。
+ */
+internal suspend fun ignoreInvalidCommand(action: suspend () -> Unit) {
+    try {
+        action()
+    } catch (e: CancellationException) {
+        throw e
+    } catch (_: IllegalStateException) {
+    } catch (_: IllegalArgumentException) {
     }
 }

@@ -2,7 +2,10 @@ package com.seeyu90.stepsim.simulator
 
 import java.io.IOException
 import java.time.Instant
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
@@ -10,6 +13,7 @@ import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -169,6 +173,78 @@ class SimulationRunnerTest {
 
         advanceTimeBy(60_000)
         assertTrue(writer.attempts.isEmpty())
+    }
+
+    @Test
+    fun `cancellation propagates out of invalid-command handling`() = runTest {
+        var continuedAfterCancel = false
+        val job = launch {
+            ignoreInvalidCommand { awaitCancellation() }
+            // 取消若被當成 IllegalStateException 吞掉，會繼續執行到這裡
+            continuedAfterCancel = true
+        }
+        runCurrent()
+
+        job.cancel()
+        runCurrent()
+
+        assertTrue(job.isCancelled)
+        assertFalse(continuedAfterCancel)
+    }
+
+    @Test
+    fun `cancellation thrown by a command is rethrown`() = runTest {
+        val thrown = runCatching { ignoreInvalidCommand { throw CancellationException("cancelled") } }.exceptionOrNull()
+        assertTrue("got $thrown", thrown is CancellationException)
+    }
+
+    @Test
+    fun `invalid commands are still ignored by the handler`() = runTest {
+        ignoreInvalidCommand { throw IllegalStateException("wrong state") }
+        ignoreInvalidCommand { throw IllegalArgumentException("out of range") }
+    }
+
+    @Test
+    fun `closing while a write is stuck does not crash and ends the tick loop`() = runTest(dispatcher) {
+        val stuck = StuckWriter()
+        val stuckRunner = SimulationRunner(
+            simulator = StepSimulator(time, stuck, sessionId = "stuck"),
+            dispatcher = dispatcher,
+            tickIntervalMillis = 10_000,
+        )
+        try {
+            stuckRunner.setTarget(10_000)
+            stuckRunner.start()
+            runCurrent()
+            advanceTimeBy(10_001)
+            assertTrue("write in progress", stuck.writing)
+            stuckRunner.pause() // 等待寫入結束才能執行，取消時正在等候中
+            runCurrent()
+
+            stuckRunner.close()
+            runCurrent()
+
+            assertTrue("stuck write was cancelled", stuck.cancelled)
+            assertEquals(0, stuckRunner.activeTickLoops)
+        } finally {
+            stuckRunner.close()
+        }
+    }
+}
+
+/** 寫入一直卡住，直到被取消。 */
+private class StuckWriter : StepWriter {
+    var writing = false
+    var cancelled = false
+
+    override suspend fun write(batch: StepBatch) {
+        writing = true
+        try {
+            awaitCancellation()
+        } catch (e: CancellationException) {
+            cancelled = true
+            throw e
+        }
     }
 }
 
