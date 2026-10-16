@@ -11,7 +11,7 @@ StepSim（package `com.seeyu90.stepsim`）是「Health Connect 開發與 QA 測�
 - Kotlin + Jetpack Compose + Material 3，Gradle Kotlin DSL，版本集中於 `gradle/libs.versions.toml`
 - MVVM + StateFlow
 - Health Connect SDK（`androidx.health.connect:connect-client`）
-- Foreground Service（type: health）、DataStore
+- Foreground Service（type: health）；DataStore 為預定使用，尚未加入依賴
 - **刻意不使用**：Room、Hilt、網路層（目前階段不需要，不要引入）
 - minSdk 28；單一模組 `:app`；AGP 9.x 使用內建 Kotlin，不要另外加 `kotlin.android` plugin
 - 開發環境：Windows + PowerShell；測試用 Android 模擬器（API 34+，Google Play 映像檔）
@@ -38,6 +38,20 @@ StepSim（package `com.seeyu90.stepsim`）是「Health Connect 開發與 QA 測�
 - ViewModel 的依賴一律以建構子注入「介面」，搭配 ViewModelProvider.Factory，不引入 Hilt
 - 新增邏輯要附單元測試，fake 寫在測試檔內；修競態類 bug 時，測試必須驗證「拿掉修正會變紅」
 
+## 架構概觀（跨檔案的資料流）
+
+- **模擬是程序層級的單例**：`StepSimApp.simulation`（`SimulationController` 介面，實作為 `SimulationRunner`）不隨畫面建立或銷毀。畫面（`SimulatorViewModel`）與通知（`SimulationService`）都只觀察 `state: StateFlow<SimulationState>` 並送出指令，誰都不持有計時迴圈。
+- **`SimulationRunner`**：跑在單一執行緒 dispatcher（`Dispatchers.Default.limitedParallelism(1)`）上；計時迴圈由狀態驅動，RUNNING 時有且只有一個（`collectLatest`），每 10 秒呼叫一次 `tick()`。指令非同步執行，狀態不合法的指令（`IllegalStateException`／`IllegalArgumentException`）直接忽略，以容忍連點與畫面／通知同時操作。
+- **`StepSimulator`**：狀態機本體，所有操作以 `Mutex` 串行。關鍵不變量：
+  - 每批區間為 `[上一批結束, 現在)`，只寫已過去的時間、連續且不重疊；小數步數以整數單位累積到下一批，最後一批截到剛好達標
+  - 暫停、寫入失敗期間留空，恢復後從當下開始，不補寫空窗
+  - 寫入途中被取消（結果未知）的批次記為 pending，下次以相同 `clientRecordId` 重送
+  - 時間一律透過 `TimeSource` 取得（`SystemTimeSource` 是唯一呼叫 `Instant.now()` 之處），測試注入假時間
+- **寫入邊界**：`simulator/StepWriter` 是介面，HC 實作是 `health/HealthConnectStepWriter`。HC 例外在 `health/` 內轉成 `StepWritePermissionException`（→ PERMISSION_REVOKED）或 `StepWriteRateLimitException`（→ 一般可重試失敗），simulator 不認得任何 HC 類別。紀錄用 `Metadata.manualEntry` 並帶固定 `clientRecordVersion`，讓重送不會重複計步。
+- **前景服務**：`StepSimApp.onCreate` 觀察狀態，進入需要前景的狀態時啟動 `SimulationService`；停止由服務自己觀察狀態處理。「何時要前景、通知長什麼樣」的決策集中在純 Kotlin 的 `service/ForegroundPolicy.kt`（`shouldRunForeground`、`notificationModel`），服務只負責繪製通知與把通知按鈕轉送成 controller 指令。啟動前景失敗不會崩潰，而是寫入 `BackgroundAvailability`，畫面據此提示；模擬本身不中斷。
+- **ViewModel 注入**：各 ViewModel 的 `companion object Factory` 從 `APPLICATION_KEY` 取得 `StepSimApp`，把 `app.simulation`、`AndroidHealthConnectManager`、`backgroundAvailability.available` 以介面傳入建構子；測試則直接以 fake 建構。
+- **導覽**：沒有 Navigation 元件，`MainActivity` 以 `rememberSaveable` 布林值切換 `SimulatorRoute`／`PermissionRoute`。`PermissionsRationaleActivity` 與 `ViewPermissionUsageActivity` alias 是 HC 授權視窗必要的 Manifest 入口，缺少時授權視窗不會跳出。
+
 ## 裝置與模擬器（Windows）
 - 安裝前先 `adb devices`，必須看到 `device` 才執行 installDebug；多台裝置時用 `adb -s <序號>`
 - 截圖不要用 `adb exec-out ... >` 重導向（PowerShell 會損壞 PNG），改用：
@@ -63,14 +77,11 @@ StepSim（package `com.seeyu90.stepsim`）是「Health Connect 開發與 QA 測�
 **目前進度：**
 - 階段 1：程式與單元測試完成，授權視窗待裝置驗證
 - 階段 2：UI 與模擬邏輯完成（Preview＋單元測試），Health Connect 實際寫入待裝置驗證
+- 階段 3：前景服務與常駐通知已實作（分支 `phase-3/background-service`），背景行為待實機驗收
 
 ## 驗收與進度
 - 「階段 N 完成」只在使用者手動驗收通過後才能寫入；程式碼寫完、測試通過都不算完成
 - 一個 commit 只做一件事；清理與重構獨立 commit
-
-## 後續階段備忘（尚未實作，勿提前做）
-- 階段 2：只寫「已過去」的時間區間；區間連續且不重疊（重疊會讓步數重複計算）；以 Metadata 標明紀錄方式與來源
-- 階段 3：Manifest 需補 FOREGROUND_SERVICE_HEALTH、POST_NOTIFICATIONS，以及 service 的 foregroundServiceType="health"，細節以最新官方文件為準
 
 ## 決定紀錄
 - 從最近使用清單滑掉 App 會終止模擬（已確認原因）：ASUS Android 15 上 logcat 顯示 `stop com.seeyu90.stepsim due to from pid <...> (com.asus.launcher)`，是桌面程式對套件執行強制停止。強制停止無法在 App 內攔截，也不會自動重啟；前景服務、START_STICKY、WorkManager 都無法防止。結論：不處理，改以提示使用者避免從最近使用清單滑掉；是否做 3b（狀態恢復）列為之後的選配。已寫入的批次不受影響。
