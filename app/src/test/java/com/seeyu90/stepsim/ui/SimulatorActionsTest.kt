@@ -94,10 +94,7 @@ class SimulatorActionsTest {
                 // 只有「檢查尚未結束」可以沒有主按鈕
                 if (state.accessNotice != AccessNotice.CHECKING) assertNotNull(label, state.bottomAction)
                 if (state.accessNotice == AccessNotice.CHECK_FAILED) assertEquals(label, BottomAction.RECHECK, state.bottomAction)
-                if (state.hasStarted) {
-                    assertTrue(label, SecondaryAction.END in state.secondaryActions)
-                    assertTrue(label, state.showMainContent || state.showStandaloneReset)
-                }
+                if (state.hasStarted) assertTrue(label, SecondaryAction.END in state.secondaryActions)
                 if (state.isFailed && granted == null) {
                     assertTrue(
                         label,
@@ -121,27 +118,48 @@ class SimulatorActionsTest {
         assertNull(checking.bottomAction)
     }
 
+    /**
+     * 畫面上的「結束本次模擬」來自 [SimulatorUiState.secondaryActions]（無條件渲染）：
+     * 已開始的模擬在任何提示狀態下都要包含 END。
+     */
     @Test
-    fun `paused simulation can be ended while a notice replaces the main content`() {
-        val notices = listOf(
-            ui(SimulationStatus.PAUSED, granted = false),
-            ui(SimulationStatus.PAUSED, granted = false, available = false),
-            ui(SimulationStatus.PAUSED, granted = null),
-            ui(SimulationStatus.PAUSED, granted = null, checkFailed = true),
+    fun `started simulation offers end under every access notice`() {
+        // 每種提示對應的輸入（權限、可用性、檢查是否失敗）
+        val noticeInputs = mapOf(
+            AccessNotice.CHECKING to Triple<Boolean?, Boolean?, Boolean>(null, null, false),
+            AccessNotice.CHECK_FAILED to Triple(null, null, true),
+            AccessNotice.PERMISSION_REQUIRED to Triple(false, true, false),
+            AccessNotice.HEALTH_CONNECT_UNAVAILABLE to Triple(false, false, false),
         )
-        for (state in notices) {
-            val label = "notice=${state.accessNotice}"
-            assertFalse(label, state.showMainContent)
-            assertTrue(label, state.showStandaloneReset)
-            assertTrue(label, SecondaryAction.END in state.secondaryActions)
+        val started = listOf(
+            SimulationStatus.RUNNING,
+            SimulationStatus.PAUSED,
+            SimulationStatus.FAILED,
+            SimulationStatus.PERMISSION_REVOKED,
+        )
+        for (status in started) {
+            for ((notice, input) in noticeInputs) {
+                val (granted, available, checkFailed) = input
+                val state = ui(status, granted = granted, available = available, failure = IOException(), checkFailed = checkFailed)
+                val label = "status=$status notice=$notice actual=${state.accessNotice}"
+                assertTrue(label, SecondaryAction.END in state.secondaryActions)
+            }
+        }
+        // 執行中與暫停時，四種提示都會真的出現（失敗時權限未知不擋主內容，由失敗卡片說明）
+        for (status in listOf(SimulationStatus.RUNNING, SimulationStatus.PAUSED)) {
+            for ((notice, input) in noticeInputs) {
+                val (granted, available, checkFailed) = input
+                val state = ui(status, granted = granted, available = available, checkFailed = checkFailed)
+                assertEquals("status=$status", notice, state.accessNotice)
+                assertFalse("status=$status notice=$notice", state.showMainContent)
+            }
         }
     }
 
     @Test
-    fun `running simulation can be ended while permission is revoked`() {
+    fun `running simulation goes to allow and can end while permission is revoked`() {
         val state = ui(SimulationStatus.RUNNING, granted = false)
         assertEquals(BottomAction.GO_ALLOW, state.bottomAction)
-        assertTrue(state.showStandaloneReset)
         assertTrue(SecondaryAction.END in state.secondaryActions)
     }
 

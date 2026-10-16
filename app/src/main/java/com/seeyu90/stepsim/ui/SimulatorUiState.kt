@@ -68,12 +68,6 @@ data class SimulatorUiState(
     val hasStarted: Boolean
         get() = status == SimulationStatus.RUNNING || status == SimulationStatus.PAUSED || isFailed
 
-    /**
-     * 已開始的模擬一律能結束：主要內容被提示取代時（權限被撤銷、Health Connect 不可用、檢查中或檢查失敗），
-     * 另外單獨提供結束。暫停中的模擬不會再寫入、也就不會變成失敗，所以不能只看 [isFailed]。
-     */
-    val showStandaloneReset: Boolean get() = hasStarted && !showMainContent
-
     /** 目標與步態只能在尚未開始時修改；步態另外可在暫停時修改。 */
     val canEditTarget: Boolean
         get() = status == SimulationStatus.IDLE || status == SimulationStatus.READY
