@@ -167,6 +167,41 @@ class SimulatorActionsTest {
         assertTrue(SecondaryAction.END in state.secondaryActions)
     }
 
+    @Test
+    fun `completed run offers start new under every access notice`() {
+        val noticeInputs = listOf(
+            Triple<Boolean?, Boolean?, Boolean>(null, null, false),
+            Triple(null, null, true),
+            Triple(false, true, false),
+            Triple(false, false, false),
+        )
+        val seen = mutableSetOf<AccessNotice>()
+        for ((granted, available, checkFailed) in noticeInputs) {
+            val state = ui(SimulationStatus.COMPLETED, granted = granted, available = available, written = 5_000, checkFailed = checkFailed)
+            seen += state.accessNotice
+            assertFalse("notice=${state.accessNotice}", state.showMainContent)
+            assertTrue("notice=${state.accessNotice}", SecondaryAction.START_NEW in state.secondaryActions)
+        }
+        assertEquals(
+            setOf(AccessNotice.CHECKING, AccessNotice.CHECK_FAILED, AccessNotice.PERMISSION_REQUIRED, AccessNotice.HEALTH_CONNECT_UNAVAILABLE),
+            seen,
+        )
+        // 主要內容在時「再模擬一次」是底部主按鈕，不重複放在次要操作
+        val normal = ui(SimulationStatus.COMPLETED, written = 5_000)
+        assertEquals(BottomAction.START_NEW, normal.bottomAction)
+        assertFalse(SecondaryAction.START_NEW in normal.secondaryActions)
+    }
+
+    @Test
+    fun `end dialog only shows while the simulation has started`() {
+        assertTrue(shouldShowEndDialog(confirmEnd = true, hasStarted = true))
+        assertFalse("completed or ended while the dialog was open", shouldShowEndDialog(confirmEnd = true, hasStarted = false))
+        assertFalse(shouldShowEndDialog(confirmEnd = false, hasStarted = true))
+        // 對照實際狀態：完成後 hasStarted 為 false
+        assertFalse(ui(SimulationStatus.COMPLETED, written = 5_000).hasStarted)
+        assertTrue(ui(SimulationStatus.PAUSED).hasStarted)
+    }
+
     // ---- 一般狀態 ----
 
     @Test

@@ -48,8 +48,14 @@ enum class BottomAction {
     RECHECK,
 }
 
-/** 捲動區裡的次要操作（文字按鈕）。「結束本次模擬」一律先跳確認對話框。 */
-enum class SecondaryAction { RETRY, END }
+/** 捲動區裡的次要操作（文字按鈕）。「結束本次模擬」一律先跳確認對話框；「再模擬一次」不需確認。 */
+enum class SecondaryAction { RETRY, END, START_NEW }
+
+/**
+ * 「結束本次模擬」的確認對話框只在模擬已開始時顯示：模擬在對話框開著時完成或被通知結束，
+ * 對話框就不該留著，否則按下「結束」會清掉使用者還沒看到的結果。
+ */
+fun shouldShowEndDialog(confirmEnd: Boolean, hasStarted: Boolean): Boolean = confirmEnd && hasStarted
 
 /** 「開始模擬」停用時，按鈕下方的原因。 */
 enum class StartHint { NEED_GOAL }

@@ -164,7 +164,9 @@ fun SimulatorScreen(
         BottomBar(state, onEvent)
     }
 
-    if (confirmEnd) {
+    // 模擬離開「已開始」（完成、從通知結束）時自動關閉，之後重新開始也不會再冒出來
+    LaunchedEffect(state.hasStarted) { if (!state.hasStarted) confirmEnd = false }
+    if (shouldShowEndDialog(confirmEnd, state.hasStarted)) {
         EndSimulationDialog(
             onConfirm = {
                 confirmEnd = false
@@ -436,6 +438,7 @@ private fun SecondaryActions(state: SimulatorUiState, onEvent: (SimulatorEvent) 
             when (action) {
                 SecondaryAction.RETRY -> SecondaryTextButton(stringResource(R.string.btn_retry), onClick = { onEvent(SimulatorEvent.Retry) })
                 SecondaryAction.END -> SecondaryTextButton(stringResource(R.string.cta_end), onClick = onEnd)
+                SecondaryAction.START_NEW -> SecondaryTextButton(stringResource(R.string.cta_new), onClick = { onEvent(SimulatorEvent.Reset) })
             }
         }
     }

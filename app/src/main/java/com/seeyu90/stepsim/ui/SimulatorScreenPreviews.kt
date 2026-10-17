@@ -111,6 +111,9 @@ private object PreviewStates {
 
     val backgroundUnavailable = walking.copy(backgroundAvailable = false)
 
+    /** 完成後權限被撤銷：主要內容被提示取代，次要操作仍有「再模擬一次」。 */
+    val completedPermissionDenied = completed.copy(permissionGranted = false)
+
     val checking = SimulatorUiState()
 
     /** 壓力測試：目標 100,000、已存入 99,999。 */
@@ -185,6 +188,10 @@ private fun UnavailablePreview() = PreviewFrame(PreviewStates.unavailable)
 @Preview(name = "15 背景不可用", showBackground = true, heightDp = 1100)
 @Composable
 private fun BackgroundUnavailablePreview() = PreviewFrame(PreviewStates.backgroundUnavailable)
+
+@Preview(name = "17 完成 · 權限被撤銷", showBackground = true, heightDp = 1100)
+@Composable
+private fun CompletedPermissionDeniedPreview() = PreviewFrame(PreviewStates.completedPermissionDenied)
 
 @Preview(name = "16 檢查中", showBackground = true, heightDp = 1100)
 @Composable

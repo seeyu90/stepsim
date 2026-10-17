@@ -151,12 +151,14 @@ data class SimulatorUiState(
 
     /**
      * 次要操作：已開始的模擬（執行中、暫停、失敗）一律能「結束本次模擬」；
-     * 權限狀態未知而主按鈕不是「再試一次」時，另外保留「再試一次」。
+     * 權限狀態未知而主按鈕不是「再試一次」時，另外保留「再試一次」；
+     * 已完成但主要內容被提示取代時（底部是前往允許等），另外提供「再模擬一次」。
      */
     val secondaryActions: List<SecondaryAction>
         get() = buildList {
             if (isFailed && permissionGranted == null && bottomAction != BottomAction.RETRY) add(SecondaryAction.RETRY)
             if (hasStarted) add(SecondaryAction.END)
+            if (status == SimulationStatus.COMPLETED && !showMainContent) add(SecondaryAction.START_NEW)
         }
 
     private val parsedTarget: Long?
