@@ -19,8 +19,6 @@ class StringsVocabularyTest {
 
     /** 例外：key → 只允許出現的禁用詞。 */
     private val allowed = mapOf(
-        "disclaimer_short" to setOf("偵測"),
-        "disclaimer_use" to setOf("獎勵"),
         "guide_3" to setOf("獎勵"),
         "perm_point_4" to setOf("獎勵"),
     )

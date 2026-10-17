@@ -1,5 +1,6 @@
 package com.seeyu90.stepsim.ui
 
+import com.seeyu90.stepsim.simulator.SimulationStatus
 import com.seeyu90.stepsim.simulator.StepSimulator
 import java.text.NumberFormat
 import java.time.Instant
@@ -60,6 +61,10 @@ enum class SecondaryAction { RETRY, END, START_NEW }
  * 對話框就不該留著，否則按下「結束」會清掉使用者還沒看到的結果。
  */
 fun shouldShowEndDialog(confirmEnd: Boolean, hasStarted: Boolean): Boolean = confirmEnd && hasStarted
+
+/** 「離開時請回到主畫面」的提醒只在執行中與暫停時顯示（失敗、完成、尚未開始時不顯示）。 */
+fun showLeaveTip(status: SimulationStatus): Boolean =
+    status == SimulationStatus.RUNNING || status == SimulationStatus.PAUSED
 
 /** 「開始模擬」停用時，按鈕下方的原因。 */
 enum class StartHint { NEED_GOAL }

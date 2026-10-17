@@ -1,5 +1,6 @@
 package com.seeyu90.stepsim.ui
 
+import com.seeyu90.stepsim.simulator.SimulationStatus
 import java.time.Instant
 import java.time.ZoneId
 import java.util.Locale
@@ -41,5 +42,13 @@ class SimulatorDisplayTest {
         assertEquals("14:32", formatClockTime(instant, ZoneId.of("Asia/Taipei"), Locale.GERMANY))
         // 跨日：UTC 前一天 23:30 在台北已是隔天 07:30
         assertEquals("07:30", formatClockTime(Instant.parse("2026-10-14T23:30:00Z"), ZoneId.of("Asia/Taipei"), Locale.GERMANY))
+    }
+
+    @Test
+    fun `leave tip only while running or paused`() {
+        val shown = setOf(SimulationStatus.RUNNING, SimulationStatus.PAUSED)
+        for (status in SimulationStatus.entries) {
+            assertEquals("status=$status", status in shown, showLeaveTip(status))
+        }
     }
 }

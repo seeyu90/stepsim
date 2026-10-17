@@ -67,12 +67,10 @@ import com.seeyu90.stepsim.simulator.Gait
 import com.seeyu90.stepsim.simulator.SimulationStatus
 import com.seeyu90.stepsim.ui.components.ErrorCard
 import com.seeyu90.stepsim.ui.components.ExpandableDetails
-import com.seeyu90.stepsim.ui.components.IconTextRow
 import com.seeyu90.stepsim.ui.components.InfoCard
 import com.seeyu90.stepsim.ui.components.NoticeCard
 import com.seeyu90.stepsim.ui.components.PrimaryButton
 import com.seeyu90.stepsim.ui.components.SecondaryTextButton
-import com.seeyu90.stepsim.ui.components.SimulatedDataBadge
 import com.seeyu90.stepsim.ui.components.StepRing
 import com.seeyu90.stepsim.ui.components.StepRingSize
 import java.time.ZoneId
@@ -159,8 +157,8 @@ fun SimulatorScreen(
                 state.showAccessNoticeCard -> AccessContent(state)
             }
             SecondaryActions(state, onEvent, onEnd = { confirmEnd = true })
-            Tips(state)
-            Disclaimer(onOpenGuide)
+            if (showLeaveTip(state.status)) LeaveTip()
+            SecondaryTextButton(stringResource(R.string.disclaimer_link), onClick = onOpenGuide)
             if (state.showMainContent) Details(state, locale)
         }
         BottomBar(state, onEvent)
@@ -179,21 +177,21 @@ fun SimulatorScreen(
     }
 }
 
+/** 標題列：App 名稱加純文字副標，不加標籤或底色。 */
 @Composable
 private fun Header() {
-    Row(
+    Column(
         Modifier
             .fillMaxWidth()
             .heightIn(min = 56.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.Center,
     ) {
+        Text(stringResource(R.string.app_name), style = MaterialTheme.typography.headlineSmall)
         Text(
-            stringResource(R.string.app_name),
-            style = MaterialTheme.typography.headlineSmall,
-            modifier = Modifier.weight(1f),
+            stringResource(R.string.app_subtitle),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        SimulatedDataBadge(stringResource(R.string.chip_simulated))
     }
 }
 
@@ -441,31 +439,14 @@ private fun SecondaryActions(state: SimulatorUiState, onEvent: (SimulatorEvent) 
     }
 }
 
+/** 離開時的提醒：純文字，不用卡片、標題或圖示。顯示時機見 [showLeaveTip]。 */
 @Composable
-private fun Tips(state: SimulatorUiState) {
-    InfoCard(title = stringResource(R.string.tips_title)) {
-        IconTextRow(stringResource(R.string.tip_realtime))
-        IconTextRow(stringResource(R.string.tip_leave))
-        // 前景服務無法啟動時「會在背景繼續」不成立，改由 bg_unavailable 提醒
-        if (state.backgroundAvailable) IconTextRow(stringResource(R.string.tip_background))
-    }
-}
-
-@Composable
-private fun Disclaimer(onOpenGuide: () -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text(
-            stringResource(R.string.disclaimer_short),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Text(
-            stringResource(R.string.disclaimer_use),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        SecondaryTextButton(stringResource(R.string.disclaimer_link), onClick = onOpenGuide)
-    }
+private fun LeaveTip() {
+    Text(
+        stringResource(R.string.tip_leave),
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
 }
 
 /** 詳細資訊（預設收合）：已存入批次與時間；只用畫面上的狀態，不持久化。 */

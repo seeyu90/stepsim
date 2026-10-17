@@ -95,23 +95,6 @@ class SimulatorUiStateTest {
         assertFalse("available: no hint", ok.showBackgroundUnavailable)
     }
 
-    /**
-     * 畫面的「使用小提醒」只在 backgroundAvailable 時顯示「離開後會在背景繼續」；
-     * 不可用時改由 showBackgroundUnavailable 的提醒卡說明，兩者不會同時出現。
-     */
-    @Test
-    fun `background tip and unavailable warning never contradict each other`() {
-        for (status in SimulationStatus.entries) for (background in listOf(true, false)) {
-            val ui = state(status, granted = true, available = true).copy(backgroundAvailable = background)
-            assertFalse(
-                "status=$status backgroundAvailable=$background",
-                ui.backgroundAvailable && ui.showBackgroundUnavailable,
-            )
-        }
-        val running = state(SimulationStatus.RUNNING, granted = true, available = true).copy(backgroundAvailable = false)
-        assertTrue("running without background: warning instead of the tip", running.showBackgroundUnavailable)
-    }
-
     @Test
     fun `granted and available shows main content`() {
         val ui = state(SimulationStatus.RUNNING, granted = true, available = true)
