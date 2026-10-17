@@ -63,17 +63,17 @@ StepSim（package `com.seeyu90.stepsim`）是「Health Connect 開發與 QA 測�
 
 ## 文案與詞彙
 - 文案一律放 `strings.xml`；品牌字串（`app_name` 等）不寫死在程式或 drawable，icon 不含文字
-- 統一用語：存入（不用「寫入」）、允許（不用「授權」）、再試一次、結束本次模擬、再模擬一次
+- 統一用語：存入（不用「寫入」）、允許（不用「授權」）、再試一次；動詞用開始、暫停、繼續、結束、完成、再來一次。「模擬」只用在說明用途的文字（例外清單見 `StringsVocabularyTest`）
 - 禁用詞：賺、獎勵、挑戰、排名、偵測、追蹤、記錄、寫入、授權。只在否定語境（禁止用途、「不是感測器偵測到的…」）例外，以（key, 詞）配對列在 `StringsVocabularyTest` 的白名單；白名單裡的詞若已不在文字中，測試也會變紅
 - `StringsVocabularyTest`：掃 `<string>`、`<plurals>`、`<string-array>` 的文字，不含 XML 註解
 - `UiHardcodedStringTest`：只檢查 `ui/` 的字串常值，只抓中日韓文字與 "StepSim"，**不抓寫死的英文**；略過註解、import／package、`@Preview(...)` 參數
 - 通知字串的 key 與參數簽名由 `SimulationService` 決定，只能換文字；佔位符數量要與呼叫端一致，否則 lint 報 StringFormatInvalid（error）
 
 ## UI 設計原則
-- 任何狀態都不得讓使用者沒有出口：已開始的模擬一律由 `secondaryActions` 提供「結束本次模擬」（無條件渲染，先跳確認對話框）；授權頁在所有階段都有畫面上的返回與系統返回
+- 任何狀態都不得讓使用者沒有出口：已開始的模擬一律由 `secondaryActions` 提供「結束」（無條件渲染，先跳確認對話框）；授權頁在所有階段都有畫面上的返回與系統返回
 - 主要動作固定在底部（捲動區之外），一個畫面只有一個
 - 錯誤主訊息一句白話；技術細節（例外、批次編號）放可展開的「詳細資訊」
-- 「模擬資料」標籤與責任使用條文常駐（主畫面、授權頁、使用說明頁）
+- 責任使用條文放在授權頁（尚未允許、需要手動開啟）與使用說明頁；主畫面只放標題副標與使用說明連結；資料在 Health Connect 一律標示「手動輸入」
 - 圓環中央數字用 TextAutoSize，大字體與小螢幕下不得超出圓環
 - 色彩以 `ui/theme/Color.kt` 為準，不用 dynamic color；文字對比至少 WCAG AA（4.5:1），容器內的文字用 onPrimaryContainer；內文至少 16sp，可點擊元件至少 48dp；狀態不單靠顏色表達
 - UI 修改只動 `ui/`；`SimulatorUiState` 與事件介面可以新增，不改名、不改既有行為；沒有使用者的屬性可以刪除，刪之前要 `git grep` 確認
@@ -87,6 +87,7 @@ StepSim（package `com.seeyu90.stepsim`）是「Health Connect 開發與 QA 測�
 - 同一個分支同一時間只有一個環境寫入
 - 新分支一律從最新 main 切出，不疊在會被 squash 的分支上
 - 不得對 main 或他人的分支 force push；rebase 後只用 `--force-with-lease`
+- 已推送的 commit 不 amend，需要更正就新增 commit；`--force-with-lease` 只用於 rebase 之後
 - PR 由使用者合併
 - repo 是公開的：不放私人連結、商業決定、計畫文件
 
