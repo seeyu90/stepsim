@@ -42,7 +42,7 @@ StepSim（package `com.seeyu90.stepsim`）是「Health Connect 開發與 QA 測�
 ## 架構概觀（跨檔案的資料流）
 
 - **模擬是程序層級的單例**：`StepSimApp.simulation`（`SimulationController` 介面，實作為 `SimulationRunner`）不隨畫面建立或銷毀。畫面（`SimulatorViewModel`）與通知（`SimulationService`）都只觀察 `state: StateFlow<SimulationState>` 並送出指令，誰都不持有計時迴圈。
-- **`SimulationRunner`**：跑在序列化 dispatcher（`Dispatchers.Default.limitedParallelism(1)`：同一時間只有一個工作，但不固定在同一條執行緒）上；計時迴圈由狀態驅動，RUNNING 時有且只有一個（`collectLatest`），每 10 秒呼叫一次 `tick()`。指令非同步執行，`CancellationException` 先重新拋出，再忽略 `IllegalStateException`／`IllegalArgumentException`；狀態不合法的指令（`IllegalStateException`／`IllegalArgumentException`）直接忽略，以容忍連點與畫面／通知同時操作。
+- **`SimulationRunner`**：跑在序列化 dispatcher（`Dispatchers.Default.limitedParallelism(1)`：同一時間只有一個工作，但不固定在同一條執行緒）上；計時迴圈由狀態驅動，RUNNING 時有且只有一個（`collectLatest`），每 10 秒呼叫一次 `tick()`。指令非同步執行，`CancellationException` 先重新拋出，再忽略 `IllegalStateException`／`IllegalArgumentException`，以容忍連點與畫面／通知同時操作。
 - **`StepSimulator`**：狀態機本體，所有操作以 `Mutex` 串行。關鍵不變量：
   - 每批區間為 `[上一批結束, 現在)`，只寫已過去的時間、連續且不重疊；小數步數以整數單位累積到下一批，最後一批截到剛好達標
   - 暫停、寫入失敗期間留空，恢復後從當下開始，不補寫空窗
@@ -104,7 +104,7 @@ StepSim（package `com.seeyu90.stepsim`）是「Health Connect 開發與 QA 測�
 - 階段 1：授權流程已於 Android 15 實機驗證（授權後狀態顯示、可寫入）。尚未驗證：部分授權、連續拒絕兩次後的導向
 - 階段 2：寫入與總數已於實機驗證（300 步總數正確）。尚未驗證：同 clientRecordId 重送的去重、寫入頻率限制、Health Connect 明細的「紀錄方式」標示
 - 階段 3a：前景服務啟動、背景與鎖屏持續寫入、通知的暫停／繼續／結束已於實機驗證（ASUS Android 15）。已知限制：從最近使用清單滑掉 App 會被 ASUS 桌面強制停止（見決定紀錄），不處理
-- 階段 9.5：進行中（分支 `phase-9.5/ui-redesign`，已推到 commit 5），尚未做本機驗證與實機驗證
+- 階段 9.5：程式完成，待本機與實機驗證（分支 `phase-9.5/ui-redesign`）
 
 ## 待驗證清單
 - 拒絕通知權限後重測一輪：不崩潰、模擬照跑
@@ -113,7 +113,7 @@ StepSim（package `com.seeyu90.stepsim`）是「Health Connect 開發與 QA 測�
 - 最近使用清單「鎖定」是否能避免被強制停止
 - Health Connect 明細：紀錄方式的標示、鎖屏期間實際批次間隔
 - 同 clientRecordId 重送是否去重（需 debug 開關，尚未做）
-- 通知小圖示：已由 launcher 的 adaptive 圖示改為單色向量圖（`ic_stat_steps`），待實機確認狀態列顯示為走路人剪影而非白色方塊
+- 通知小圖示：已由 launcher 的 adaptive 圖示改為單色向量圖（`ic_stat_steps`），待實機確認狀態列顯示為腳印而非白色方塊；若腳掌與腳跟糊成一塊，只對 `ic_stat_steps` 把腳跟下移約 1.5 單位並重算平移值
 - 前景服務對帳（commit a952fab）：
   - 20 步目標跑完立刻重設再開始，連續 10 次；之後 logcat 不應出現 did not start 或 ForegroundService 相關錯誤
   - 啟動失敗用的 debug 版（暫時拿掉 `HIGH_SAMPLING_RATE_SENSORS`，不要 commit）：開始 → 結束 → 再開始，應再次嘗試啟動；離開前景需求時「無法在背景執行」提示消失
@@ -122,9 +122,9 @@ StepSim（package `com.seeyu90.stepsim`）是「Health Connect 開發與 QA 測�
 - 順序：上面的啟動失敗驗證要在 specialUse 遷移之前完成；遷移後的失敗注入改為暫時拿掉 `FOREGROUND_SERVICE_SPECIAL_USE` 權限，並須在實機確認這樣會拋 SecurityException（目前未驗證）
 
 ## Lint 現況
-- 0 error、10 warning；warning 上限 10，不得新增 warning 或 error。每個 commit 回報 warning 數
+- 0 error、8 warning；warning 上限 8，不得新增 warning 或 error。每個 commit 回報 warning 數
 - 待辦（本輪不處理）：依賴版本更新（GradleDependency 5、NewerVersionAvailable 1）
-- UnusedResources 7 已於階段 9.5 移除（範本顏色）；RedundantLabel 2 預計在階段 9.5 自然消失；ObsoleteSdkInt 1 未處理；HighSamplingRate 1 見下方階段 10 阻擋項
+- UnusedResources 7（範本顏色）與 RedundantLabel 2（重複的 activity label）已於階段 9.5 移除；ObsoleteSdkInt 1 未處理；HighSamplingRate 1 見下方階段 10 阻擋項
 
 ## 階段 10 上架阻擋項（階段 10 完成前不得送審）
 - `HIGH_SAMPLING_RATE_SENSORS` 可能讓 Play 要求審核用途，甚至拒絕上架。lint（HighSamplingRate）訊息摘要：多數 App 不需要高取樣率感測器；需確認確實需要 > 200Hz；用途經 Play 政策團隊審核確認前，可能被拒絕上架
