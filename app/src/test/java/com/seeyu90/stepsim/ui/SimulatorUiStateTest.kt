@@ -39,14 +39,14 @@ class SimulatorUiStateTest {
     }
 
     @Test
-    fun `reset is always reachable when failed`() {
+    fun `end is always offered when failed`() {
         val tri = listOf(true, false, null)
         for (status in listOf(SimulationStatus.FAILED, SimulationStatus.PERMISSION_REVOKED)) {
             for (granted in tri) for (available in tri) {
                 val ui = state(status, granted, available)
                 assertTrue(
                     "status=$status granted=$granted available=$available",
-                    ui.showMainContent || ui.showStandaloneReset,
+                    SecondaryAction.END in ui.secondaryActions,
                 )
             }
         }
@@ -65,18 +65,18 @@ class SimulatorUiStateTest {
     fun `unknown permission shows checking when not failed`() {
         val ui = state(SimulationStatus.READY, granted = null, available = null)
         assertEquals(AccessNotice.CHECKING, ui.accessNotice)
-        assertFalse(ui.showStandaloneReset)
+        assertTrue("not started: nothing to end", ui.secondaryActions.isEmpty())
     }
 
     @Test
-    fun `denied permission shows permission prompt and standalone reset only when failed`() {
+    fun `denied permission shows permission prompt and offers end only once started`() {
         val ready = state(SimulationStatus.READY, granted = false, available = true)
         assertEquals(AccessNotice.PERMISSION_REQUIRED, ready.accessNotice)
-        assertFalse(ready.showStandaloneReset)
+        assertFalse(SecondaryAction.END in ready.secondaryActions)
 
         val revoked = state(SimulationStatus.PERMISSION_REVOKED, granted = false, available = true)
         assertEquals(AccessNotice.PERMISSION_REQUIRED, revoked.accessNotice)
-        assertTrue(revoked.showStandaloneReset)
+        assertTrue(SecondaryAction.END in revoked.secondaryActions)
     }
 
     @Test
@@ -96,33 +96,9 @@ class SimulatorUiStateTest {
     }
 
     @Test
-    fun `foreground hint is shown only while running with background available`() {
-        for (status in SimulationStatus.entries) {
-            val ok = state(status, granted = true, available = true)
-            assertEquals("status $status", status == SimulationStatus.RUNNING, ok.showForegroundHint)
-            assertFalse(
-                "background unavailable, status $status",
-                ok.copy(backgroundAvailable = false).showForegroundHint,
-            )
-        }
-    }
-
-    @Test
-    fun `foreground hint never contradicts the background unavailable warning`() {
-        for (status in SimulationStatus.entries) for (background in listOf(true, false)) {
-            val ui = state(status, granted = true, available = true).copy(backgroundAvailable = background)
-            assertFalse(
-                "status=$status backgroundAvailable=$background",
-                ui.showForegroundHint && ui.showBackgroundUnavailable,
-            )
-        }
-    }
-
-    @Test
     fun `granted and available shows main content`() {
         val ui = state(SimulationStatus.RUNNING, granted = true, available = true)
         assertEquals(AccessNotice.NONE, ui.accessNotice)
         assertTrue(ui.showMainContent)
-        assertFalse(ui.showStandaloneReset)
     }
 }

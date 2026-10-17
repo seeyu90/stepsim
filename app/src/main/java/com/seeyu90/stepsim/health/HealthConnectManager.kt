@@ -25,8 +25,8 @@ interface HealthConnectManager {
     companion object {
         const val PROVIDER_PACKAGE = "com.google.android.apps.healthdata"
 
+        /** 只需要存入步數；StepSim 不讀取任何健康資料，需要讀取時再加回並說明用途。 */
         val PERMISSIONS: Set<String> = setOf(
-            HealthPermission.getReadPermission(StepsRecord::class),
             HealthPermission.getWritePermission(StepsRecord::class),
         )
     }

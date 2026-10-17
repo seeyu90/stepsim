@@ -2,7 +2,9 @@ package com.seeyu90.stepsim.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -14,8 +16,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.seeyu90.stepsim.R
 
 /**
- * 授權頁外層：提供返回按鈕與系統返回，並在授權成功後自動回到模擬頁。
- * 不修改 [PermissionScreen]，只讀取同一個 [PermissionViewModel] 的狀態。
+ * 授權頁外層：任何階段都有畫面上的返回與系統返回（不把使用者困在授權頁），
+ * 並在授權成功後自動回到模擬頁。只讀取同一個 [PermissionViewModel] 的狀態。
  */
 @Composable
 fun PermissionRoute(
@@ -33,10 +35,15 @@ fun PermissionRoute(
     }
 
     Column(modifier) {
-        TextButton(onClick = onBack, modifier = Modifier.padding(start = 8.dp)) {
-            Text(stringResource(R.string.action_back_to_simulator))
+        TextButton(
+            onClick = onBack,
+            modifier = Modifier
+                .padding(start = 8.dp, top = 4.dp)
+                .heightIn(min = 48.dp),
+        ) {
+            Text(stringResource(R.string.perm_back), style = MaterialTheme.typography.labelLarge)
         }
-        PermissionScreen(modifier = Modifier.weight(1f), viewModel = viewModel)
+        PermissionScreen(onBack = onBack, modifier = Modifier.weight(1f), viewModel = viewModel)
     }
 }
 

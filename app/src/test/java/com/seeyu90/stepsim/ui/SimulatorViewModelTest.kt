@@ -288,6 +288,21 @@ class SimulatorViewModelTest {
     }
 
     @Test
+    fun `failed permission check shows check failed and recheck recovers`() = vmTest {
+        healthConnect.hasAllPermissionsHandler = { throw IllegalStateException("service unbound") }
+        viewModel.refreshPermission()
+        runCurrent()
+        assertEquals(AccessNotice.CHECK_FAILED, ui.accessNotice)
+        assertEquals(BottomAction.RECHECK, ui.bottomAction)
+
+        healthConnect.hasAllPermissionsHandler = { healthConnect.granted }
+        viewModel.onEvent(SimulatorEvent.Recheck)
+        runCurrent()
+        assertEquals(AccessNotice.NONE, ui.accessNotice)
+        assertFalse(ui.permissionCheckFailed)
+    }
+
+    @Test
     fun `reset rechecks permission`() = vmTest {
         startSimulation()
         val calls = healthConnect.hasAllPermissionsCalls

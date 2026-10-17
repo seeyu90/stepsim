@@ -41,8 +41,8 @@ class SimulatorViewModel(
 
     private data class Form(val targetInput: String = "", val targetError: TargetInputError? = null)
 
-    /** null 代表尚在檢查。 */
-    private data class Access(val available: Boolean? = null, val granted: Boolean? = null)
+    /** null 代表尚在檢查；[checkFailed] 代表最近一次檢查本身失敗（下次檢查開始時清掉）。 */
+    private data class Access(val available: Boolean? = null, val granted: Boolean? = null, val checkFailed: Boolean = false)
 
     // 模擬器是程序層級的，ViewModel 重建時它可能已有目標：從它還原，輸入框才不會與模擬器分歧
     private val form = MutableStateFlow(Form(targetInput = controller.state.value.targetSteps?.toString().orEmpty()))
@@ -53,6 +53,7 @@ class SimulatorViewModel(
             SimulatorUiState(
                 permissionGranted = access.granted,
                 healthConnectAvailable = access.available,
+                permissionCheckFailed = access.checkFailed,
                 targetInput = form.targetInput,
                 targetError = form.targetError,
                 simulation = simulation,
@@ -82,6 +83,7 @@ class SimulatorViewModel(
             SimulatorEvent.Retry -> controller.retry()
             SimulatorEvent.Reset -> reset()
             SimulatorEvent.OpenPermission -> Unit // 由畫面處理導覽
+            SimulatorEvent.Recheck -> refreshPermission()
         }
     }
 
@@ -111,6 +113,8 @@ class SimulatorViewModel(
 
     fun refreshPermission() {
         permissionJob?.cancel()
+        // 重新檢查期間回到「檢查中」，不沿用上一次的「檢查失敗」
+        access.update { it.copy(checkFailed = false) }
         permissionJob = viewModelScope.launch {
             try {
                 val available = healthConnect.availability() == HealthConnectAvailability.AVAILABLE
@@ -118,8 +122,8 @@ class SimulatorViewModel(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                // 檢查本身失敗：權限維持未知，不保留可能已過時的舊值
-                access.update { it.copy(granted = null) }
+                // 檢查本身失敗：權限維持未知，不保留可能已過時的舊值；標記失敗，畫面才能提供「再試一次」
+                access.update { it.copy(granted = null, checkFailed = true) }
             }
         }
     }

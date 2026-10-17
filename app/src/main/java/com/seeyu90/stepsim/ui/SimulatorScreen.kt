@@ -8,37 +8,54 @@ import android.content.pm.PackageManager
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.exclude
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
@@ -48,15 +65,22 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.seeyu90.stepsim.R
 import com.seeyu90.stepsim.simulator.Gait
 import com.seeyu90.stepsim.simulator.SimulationStatus
-import com.seeyu90.stepsim.simulator.StepSimulator
-import java.time.Instant
+import com.seeyu90.stepsim.ui.components.ErrorCard
+import com.seeyu90.stepsim.ui.components.ExpandableDetails
+import com.seeyu90.stepsim.ui.components.InfoCard
+import com.seeyu90.stepsim.ui.components.NoticeCard
+import com.seeyu90.stepsim.ui.components.PrimaryButton
+import com.seeyu90.stepsim.ui.components.SecondaryTextButton
+import com.seeyu90.stepsim.ui.components.StepRing
+import com.seeyu90.stepsim.ui.components.StepRingSize
 import java.time.ZoneId
-import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 /** 接 ViewModel 的外層：負責權限檢查，以及開始前請求通知權限（Android 13+）。 */
 @Composable
 fun SimulatorRoute(
     onOpenPermission: () -> Unit,
+    onOpenGuide: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: SimulatorViewModel = viewModel(factory = SimulatorViewModel.Factory),
 ) {
@@ -86,6 +110,7 @@ fun SimulatorRoute(
                 else -> viewModel.onEvent(event)
             }
         },
+        onOpenGuide = onOpenGuide,
         modifier = modifier,
     )
 }
@@ -95,143 +120,303 @@ private fun needsNotificationPermission(context: Context): Boolean =
         ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
         PackageManager.PERMISSION_GRANTED
 
-/** 無狀態畫面：只依 [state] 繪製，所有操作透過 [onEvent] 回傳。Preview 只使用這一層。 */
+/**
+ * 無狀態畫面：只依 [state] 繪製，所有操作透過 [onEvent] 回傳。Preview 只使用這一層。
+ *
+ * 版面：可捲動的內容在上，主要動作固定在底部（捲動區之外）。鍵盤打開時底部按鈕跟著上移；
+ * 系統導覽列的 insets 已由外層 Scaffold 處理，這裡只補鍵盤高到導覽列以上的部分。
+ */
 @Composable
 fun SimulatorScreen(
     state: SimulatorUiState,
     onEvent: (SimulatorEvent) -> Unit,
+    onOpenGuide: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    var confirmEnd by rememberSaveable { mutableStateOf(false) }
+    // 讀 LocalConfiguration 才會在使用者切換語言時更新（不要用 Locale.getDefault()）
+    val locale: Locale = LocalConfiguration.current.locales[0]
+
     Column(
-        modifier = modifier
+        modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+            .windowInsetsPadding(WindowInsets.ime.exclude(WindowInsets.navigationBars)),
     ) {
-        Text(stringResource(R.string.sim_title), style = MaterialTheme.typography.headlineSmall)
-
-        // 放在權限檢查之前：Health Connect 不可用時，失敗原因仍要顯示
-        FailureCard(state)
-
-        val openPermission = { onEvent(SimulatorEvent.OpenPermission) }
-        when (state.accessNotice) {
-            AccessNotice.CHECKING -> Text(stringResource(R.string.sim_checking_permission))
-            AccessNotice.HEALTH_CONNECT_UNAVAILABLE -> AccessRequired(
-                title = R.string.sim_unavailable_title,
-                body = R.string.sim_unavailable_body,
-                onOpenPermission = openPermission,
-            )
-            AccessNotice.PERMISSION_REQUIRED -> AccessRequired(
-                title = R.string.sim_permission_title,
-                body = R.string.sim_permission_body,
-                onOpenPermission = openPermission,
-            )
-            AccessNotice.NONE -> Unit
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 20.dp, vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Header()
+            when {
+                state.showMainContent -> MainContent(state, locale, onEvent)
+                // 失敗時主要內容被提示取代，仍顯示失敗卡片（原因、批次編號、詳細資訊）
+                state.showFailureCard -> FailureCard(state)
+                state.showAccessNoticeCard -> AccessContent(state)
+            }
+            SecondaryActions(state, onEvent, onEnd = { confirmEnd = true })
+            if (showLeaveTip(state.status, state.backgroundAvailable)) LeaveTip()
+            SecondaryTextButton(stringResource(R.string.disclaimer_link), onClick = onOpenGuide)
+            if (state.showMainContent) Details(state, locale)
         }
-        if (state.showStandaloneReset) {
-            OutlinedButton(onClick = { onEvent(SimulatorEvent.Reset) }, modifier = Modifier.fillMaxWidth()) {
-                Text(stringResource(R.string.sim_action_reset))
+        BottomBar(state, onEvent)
+    }
+
+    // 模擬離開「已開始」（完成、從通知結束）時自動關閉，之後重新開始也不會再冒出來
+    LaunchedEffect(state.hasStarted) { if (!state.hasStarted) confirmEnd = false }
+    if (shouldShowEndDialog(confirmEnd, state.hasStarted)) {
+        EndSimulationDialog(
+            onConfirm = {
+                confirmEnd = false
+                onEvent(SimulatorEvent.Reset)
+            },
+            onDismiss = { confirmEnd = false },
+        )
+    }
+}
+
+/** 標題列：App 名稱加純文字副標，不加標籤或底色。 */
+@Composable
+private fun Header() {
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .heightIn(min = 56.dp),
+        verticalArrangement = Arrangement.Center,
+    ) {
+        Text(stringResource(R.string.app_name), style = MaterialTheme.typography.headlineSmall)
+        Text(
+            stringResource(R.string.app_subtitle),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+/** 主要內容被存取提示取代時（檢查中、檢查失敗、Health Connect 不可用、尚未允許）。 */
+@Composable
+private fun AccessContent(state: SimulatorUiState) {
+    when (state.accessNotice) {
+        AccessNotice.CHECKING -> Text(
+            stringResource(R.string.checking),
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        AccessNotice.CHECK_FAILED -> NoticeCard(stringResource(R.string.perm_check_failed))
+        AccessNotice.HEALTH_CONNECT_UNAVAILABLE -> NoticeCard(stringResource(R.string.err_unavailable))
+        AccessNotice.PERMISSION_REQUIRED -> NoticeCard(stringResource(R.string.cta_hint_need_permission))
+        AccessNotice.NONE -> Unit
+    }
+}
+
+@Composable
+private fun MainContent(state: SimulatorUiState, locale: Locale, onEvent: (SimulatorEvent) -> Unit) {
+    Ring(state, locale)
+    Status(state, locale)
+    if (state.showBackgroundUnavailable) NoticeCard(stringResource(R.string.bg_unavailable))
+    if (state.showTargetInput) {
+        SettingsCard(state, locale, onEvent)
+    } else if (state.showGaitSelector) {
+        InfoCard { GaitSelector(state, onEvent) }
+    }
+}
+
+@Composable
+private fun Ring(state: SimulatorUiState, locale: Locale) {
+    val written = formatSteps(state.simulation.writtenSteps, locale)
+    val target = state.displayTarget
+    Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+        StepRing(
+            progress = state.progress,
+            value = written,
+            caption = stringResource(R.string.unit_steps),
+            contentDescription = if (target != null) {
+                stringResource(R.string.ring_a11y, state.progressPercent, written, formatSteps(target, locale))
+            } else {
+                stringResource(R.string.ring_a11y_no_target, written)
+            },
+            size = if (state.compactRing) StepRingSize.COMPACT else StepRingSize.FULL,
+            failed = state.isFailed,
+        )
+        Text(
+            text = if (target != null) {
+                stringResource(R.string.ring_goal, formatSteps(target, locale)) + " · " + gaitName(state.simulation.gait)
+            } else {
+                stringResource(R.string.hero_empty)
+            },
+            style = MaterialTheme.typography.titleMedium,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(top = 12.dp),
+        )
+    }
+}
+
+/** 狀態說明：第一行（含圖示）在狀態改變時才變動，以 liveRegion 通知 TalkBack；第二行是細節。 */
+@Composable
+private fun Status(state: SimulatorUiState, locale: Locale) {
+    val simulation = state.simulation
+    when (simulation.status) {
+        SimulationStatus.IDLE, SimulationStatus.READY -> state.remainingMinutes?.let { minutes ->
+            Text(
+                stringResource(R.string.estimate, durationText(RemainingTime.of(minutes))),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+        SimulationStatus.RUNNING -> {
+            val walking = simulation.gait == Gait.WALK
+            val rate = stringResource(R.string.status_rate, simulation.gait.stepsPerMinute)
+            val minutes = state.remainingMinutes
+            StatusBlock(
+                icon = if (walking) R.drawable.ic_walk else R.drawable.ic_run,
+                title = stringResource(if (walking) R.string.status_walking else R.string.status_running),
+                detail = if (state.showRemaining && minutes != null) "$rate · ${remainingText(minutes)}" else rate,
+            )
+        }
+        SimulationStatus.PAUSED -> StatusBlock(
+            icon = R.drawable.ic_pause,
+            title = stringResource(R.string.status_paused),
+            detail = stringResource(R.string.paused_hint),
+        )
+        SimulationStatus.COMPLETED -> StatusBlock(
+            icon = R.drawable.ic_check,
+            title = stringResource(R.string.status_done),
+            detail = stringResource(R.string.done_title, formatSteps(simulation.writtenSteps, locale)) + "\n" +
+                stringResource(R.string.done_body),
+        )
+        SimulationStatus.FAILED, SimulationStatus.PERMISSION_REVOKED -> FailureCard(state)
+    }
+}
+
+@Composable
+private fun StatusBlock(@DrawableRes icon: Int, title: String, detail: String) {
+    Surface(
+        color = MaterialTheme.colorScheme.primaryContainer,
+        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+        shape = MaterialTheme.shapes.large,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Row(
+            Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(painterResource(icon), contentDescription = null, modifier = Modifier.size(28.dp))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    title,
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+                )
+                Text(detail, style = MaterialTheme.typography.bodyMedium)
             }
         }
-        if (!state.showMainContent) return@Column
-
-        StatusLabel(state)
-        TargetSection(state, onEvent)
-        GaitSection(state, onEvent)
-        ProgressSection(state)
-        Actions(state, onEvent)
     }
 }
 
-@Composable
-private fun AccessRequired(@StringRes title: Int, @StringRes body: Int, onOpenPermission: () -> Unit) {
-    WarningCard(
-        title = stringResource(title),
-        body = stringResource(body),
-    )
-    Button(onClick = onOpenPermission, modifier = Modifier.fillMaxWidth()) {
-        Text(stringResource(R.string.sim_action_open_permission))
-    }
-}
-
-@Composable
-private fun StatusLabel(state: SimulatorUiState) {
-    val cadence = state.simulation.gait.stepsPerMinute
-    val text = when (state.status) {
-        SimulationStatus.RUNNING -> stringResource(
-            if (state.simulation.gait == Gait.WALK) R.string.sim_status_walking else R.string.sim_status_running,
-            cadence,
-        ).let { "● $it" }
-        SimulationStatus.PAUSED -> "❚❚ " + stringResource(R.string.sim_status_paused)
-        SimulationStatus.COMPLETED -> "✓ " + stringResource(R.string.sim_status_completed)
-        else -> return
-    }
-    Text(text, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
-}
-
+/** 失敗卡片：一句白話＋可展開的詳細資訊；不放按鈕（主要動作在底部）。 */
 @Composable
 private fun FailureCard(state: SimulatorUiState) {
     val failure = state.simulation.failure
-    val message = failureMessageFor(
-        status = state.status,
-        failure = failure,
-        permissionGranted = state.permissionGranted,
-        healthConnectAvailable = state.healthConnectAvailable,
-    ) ?: return
-    WarningCard(
-        title = stringResource(R.string.sim_failed_title, state.simulation.failedBatchNumber ?: 0),
-        body = stringResource(message.stringRes()) + "\n\n" +
-            stringResource(R.string.sim_failed_retry_note),
-        detail = failure?.let { stringResource(R.string.sim_failed_detail, technicalDetail(it)) },
-    )
-}
-
-@Composable
-private fun WarningCard(title: String, body: String, detail: String? = null) {
-    Card(
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.errorContainer,
-            contentColor = MaterialTheme.colorScheme.onErrorContainer,
-        ),
-        modifier = Modifier.fillMaxWidth(),
+    val message = state.failureMessage ?: return
+    ErrorCard(
+        label = stringResource(R.string.status_failed),
+        title = stringResource(R.string.err_generic_title),
+        body = stringResource(message.stringRes()),
+        modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
     ) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("⚠ $title", style = MaterialTheme.typography.titleMedium)
-            Text(body, style = MaterialTheme.typography.bodyMedium)
-            if (detail != null) {
-                Text(detail, style = MaterialTheme.typography.bodySmall)
+        val batch = state.simulation.failedBatchNumber
+        if (batch != null || failure != null) {
+            ExpandableDetails(stringResource(R.string.err_details_label)) {
+                if (batch != null) Text(stringResource(R.string.err_details_batch, batch), style = MaterialTheme.typography.bodyMedium)
+                if (failure != null) Text(technicalDetail(failure), style = MaterialTheme.typography.bodyMedium)
             }
         }
     }
 }
 
 @Composable
-private fun TargetSection(state: SimulatorUiState, onEvent: (SimulatorEvent) -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(stringResource(R.string.sim_target_label), style = MaterialTheme.typography.titleSmall)
-        val value = if (state.canEditTarget) state.targetInput else state.displayTarget?.toString().orEmpty()
+private fun SettingsCard(state: SimulatorUiState, locale: Locale, onEvent: (SimulatorEvent) -> Unit) {
+    InfoCard {
         OutlinedTextField(
-            value = value,
+            value = state.targetInput,
             onValueChange = { onEvent(SimulatorEvent.TargetInputChanged(it)) },
-            enabled = state.canEditTarget,
             singleLine = true,
-            placeholder = { Text(stringResource(R.string.sim_target_placeholder)) },
-            suffix = { Text(stringResource(R.string.sim_steps_suffix)) },
+            label = { Text(stringResource(R.string.goal_label)) },
+            suffix = { Text(stringResource(R.string.unit_steps)) },
             isError = state.targetError != null,
-            supportingText = state.targetError?.let {
-                { Text(stringResource(R.string.sim_target_out_of_range, formatSteps(StepSimulator.MAX_TARGET_STEPS))) }
+            supportingText = {
+                Text(stringResource(if (state.targetError != null) R.string.goal_error else R.string.goal_hint, goalLimitText(locale)))
             },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            textStyle = MaterialTheme.typography.bodyLarge,
             modifier = Modifier.fillMaxWidth(),
         )
-        if (state.canEditTarget) {
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                for (steps in QUICK_TARGETS) {
-                    FilterChip(
-                        selected = state.targetInput == steps.toString(),
-                        onClick = { onEvent(SimulatorEvent.QuickTargetSelected(steps)) },
-                        label = { Text(formatSteps(steps)) },
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            for (steps in QUICK_TARGETS) {
+                val selected = state.targetInput == steps.toString()
+                FilterChip(
+                    selected = selected,
+                    onClick = { onEvent(SimulatorEvent.QuickTargetSelected(steps)) },
+                    label = { Text(formatSteps(steps, locale), style = MaterialTheme.typography.labelLarge) },
+                    leadingIcon = if (selected) {
+                        { Icon(painterResource(R.drawable.ic_check), contentDescription = null, modifier = Modifier.size(18.dp)) }
+                    } else {
+                        null
+                    },
+                    modifier = Modifier.heightIn(min = 48.dp),
+                )
+            }
+        }
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+        GaitSelector(state, onEvent)
+    }
+}
+
+/** 速度：兩張垂直排列的選項卡（≥56dp），長標籤在大字體下也不會爆版。 */
+@Composable
+private fun GaitSelector(state: SimulatorUiState, onEvent: (SimulatorEvent) -> Unit) {
+    Text(stringResource(R.string.speed_label), style = MaterialTheme.typography.titleMedium)
+    Column(Modifier.selectableGroup(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        for (gait in Gait.entries) {
+            val selected = state.simulation.gait == gait
+            Surface(
+                shape = MaterialTheme.shapes.medium,
+                color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
+                contentColor = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface,
+                border = BorderStroke(
+                    if (selected) 2.dp else 1.dp,
+                    if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
+                ),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 56.dp)
+                    .selectable(
+                        selected = selected,
+                        enabled = state.canEditGait,
+                        role = Role.RadioButton,
+                        onClick = { onEvent(SimulatorEvent.GaitSelected(gait)) },
+                    ),
+            ) {
+                Row(
+                    Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    RadioButton(selected = selected, onClick = null)
+                    Icon(
+                        painterResource(if (gait == Gait.WALK) R.drawable.ic_walk else R.drawable.ic_run),
+                        contentDescription = null,
+                        modifier = Modifier.size(24.dp),
+                    )
+                    Text(
+                        stringResource(if (gait == Gait.WALK) R.string.speed_walk else R.string.speed_run, gait.stepsPerMinute),
+                        style = MaterialTheme.typography.bodyLarge,
+                        modifier = Modifier.weight(1f),
                     )
                 }
             }
@@ -240,130 +425,127 @@ private fun TargetSection(state: SimulatorUiState, onEvent: (SimulatorEvent) -> 
 }
 
 @Composable
-private fun GaitSection(state: SimulatorUiState, onEvent: (SimulatorEvent) -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(stringResource(R.string.sim_gait_label), style = MaterialTheme.typography.titleSmall)
-        SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-            Gait.entries.forEachIndexed { index, gait ->
-                SegmentedButton(
-                    selected = state.simulation.gait == gait,
-                    onClick = { onEvent(SimulatorEvent.GaitSelected(gait)) },
-                    enabled = state.canEditGait,
-                    shape = SegmentedButtonDefaults.itemShape(index, Gait.entries.size),
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(stringResource(if (gait == Gait.WALK) R.string.sim_gait_walk else R.string.sim_gait_run))
-                        Text(
-                            stringResource(R.string.sim_cadence, gait.stepsPerMinute),
-                            style = MaterialTheme.typography.labelSmall,
-                        )
-                    }
-                }
+private fun SecondaryActions(state: SimulatorUiState, onEvent: (SimulatorEvent) -> Unit, onEnd: () -> Unit) {
+    val actions = state.secondaryActions
+    if (actions.isEmpty()) return
+    Column {
+        for (action in actions) {
+            when (action) {
+                SecondaryAction.RETRY -> SecondaryTextButton(stringResource(R.string.btn_retry), onClick = { onEvent(SimulatorEvent.Retry) })
+                SecondaryAction.END -> SecondaryTextButton(stringResource(R.string.cta_end), onClick = onEnd)
+                SecondaryAction.START_NEW -> SecondaryTextButton(stringResource(R.string.cta_new), onClick = { onEvent(SimulatorEvent.Reset) })
+            }
+        }
+    }
+}
+
+/** 離開時的提醒：純文字，不用卡片、標題或圖示。顯示時機見 [showLeaveTip]。 */
+@Composable
+private fun LeaveTip() {
+    Text(
+        stringResource(R.string.tip_leave),
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+}
+
+/** 詳細資訊（預設收合）：已存入批次與時間；只用畫面上的狀態，不持久化。 */
+@Composable
+private fun Details(state: SimulatorUiState, locale: Locale) {
+    val simulation = state.simulation
+    if (simulation.batchCount == 0) return
+    val zone = ZoneId.systemDefault()
+    InfoCard {
+        ExpandableDetails(stringResource(R.string.err_details_label)) {
+            Text(stringResource(R.string.detail_batches, simulation.batchCount), style = MaterialTheme.typography.bodyMedium)
+            val first = simulation.firstBatchStart
+            val last = simulation.lastBatchEnd
+            when {
+                simulation.status == SimulationStatus.COMPLETED && first != null && last != null -> Text(
+                    stringResource(
+                        R.string.detail_range,
+                        formatClockTime(first, zone, locale),
+                        formatClockTime(last, zone, locale),
+                    ),
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                last != null -> Text(
+                    stringResource(R.string.detail_last, formatClockTime(last, zone, locale)),
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            }
+        }
+    }
+}
+
+/** 底部固定的主要動作（捲動區之外）；沒有主要動作時（例如權限檢查中）整列不顯示。 */
+@Composable
+private fun BottomBar(state: SimulatorUiState, onEvent: (SimulatorEvent) -> Unit) {
+    val action = state.bottomAction ?: return
+    Surface(color = MaterialTheme.colorScheme.background) {
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            val (label, icon, event) = when (action) {
+                BottomAction.START -> Triple(R.string.cta_start, R.drawable.ic_play, SimulatorEvent.Start)
+                BottomAction.PAUSE -> Triple(R.string.cta_pause, R.drawable.ic_pause, SimulatorEvent.Pause)
+                BottomAction.RESUME -> Triple(R.string.cta_resume, R.drawable.ic_play, SimulatorEvent.Resume)
+                BottomAction.RETRY -> Triple(R.string.btn_retry, null, SimulatorEvent.Retry)
+                BottomAction.GO_ALLOW -> Triple(R.string.btn_go_allow, null, SimulatorEvent.OpenPermission)
+                BottomAction.GO_CHECK -> Triple(R.string.btn_go_check, null, SimulatorEvent.OpenPermission)
+                BottomAction.START_NEW -> Triple(R.string.cta_new, null, SimulatorEvent.Reset)
+                BottomAction.RECHECK -> Triple(R.string.btn_retry, null, SimulatorEvent.Recheck)
+            }
+            PrimaryButton(
+                text = stringResource(label),
+                onClick = { onEvent(event) },
+                enabled = action != BottomAction.START || state.canStart,
+                icon = icon?.let { painterResource(it) },
+            )
+            if (state.startHint == StartHint.NEED_GOAL) {
+                Text(
+                    stringResource(R.string.cta_hint_need_goal),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth(),
+                )
             }
         }
     }
 }
 
 @Composable
-private fun ProgressSection(state: SimulatorUiState) {
-    val simulation = state.simulation
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text(
-                stringResource(R.string.sim_progress_label) + "  " + stringResource(
-                    R.string.sim_progress_steps,
-                    formatSteps(simulation.writtenSteps),
-                    state.displayTarget?.let(::formatSteps) ?: "—",
-                ),
-                style = MaterialTheme.typography.bodyLarge,
-                modifier = Modifier.weight(1f),
-            )
-            Text(
-                stringResource(R.string.sim_progress_percent, (state.progress * 100).toInt()),
-                style = MaterialTheme.typography.bodyLarge,
-            )
-        }
-        LinearProgressIndicator(progress = { state.progress }, modifier = Modifier.fillMaxWidth())
-
-        val first = simulation.firstBatchStart
-        val last = simulation.lastBatchEnd
-        when {
-            state.status == SimulationStatus.COMPLETED && first != null && last != null ->
-                InfoText(stringResource(R.string.sim_batches_range, simulation.batchCount, formatTime(first), formatTime(last)))
-            last != null ->
-                InfoText(stringResource(R.string.sim_batches_last, simulation.batchCount, formatTime(last)))
-        }
-
-        val minutes = state.remainingMinutes
-        when {
-            state.canEditTarget && minutes == null -> InfoText(stringResource(R.string.sim_need_target))
-            state.canEditTarget && minutes != null -> InfoText(stringResource(R.string.sim_estimate_total, minutes))
-            state.status == SimulationStatus.RUNNING && minutes != null ->
-                InfoText(stringResource(R.string.sim_estimate_remaining, minutes))
-        }
-        if (state.showForegroundHint) InfoText("ⓘ " + stringResource(R.string.sim_foreground_hint))
-        if (state.status == SimulationStatus.PAUSED) InfoText(stringResource(R.string.sim_paused_hint))
-        if (state.showBackgroundUnavailable) {
-            Text(
-                "⚠ " + stringResource(R.string.sim_background_unavailable),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.error,
-            )
-        }
-    }
-}
+private fun gaitName(gait: Gait): String =
+    stringResource(if (gait == Gait.WALK) R.string.sim_gait_walk else R.string.sim_gait_run)
 
 @Composable
-private fun InfoText(text: String) {
-    Text(text, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+private fun durationText(time: RemainingTime): String = when (time) {
+    RemainingTime.Soon -> stringResource(R.string.remaining_soon)
+    is RemainingTime.Minutes -> stringResource(R.string.duration_min, time.minutes.toInt())
+    is RemainingTime.Hours -> stringResource(R.string.duration_hour, time.hours.toInt())
+    is RemainingTime.HoursMinutes -> stringResource(R.string.duration_hour_min, time.hours.toInt(), time.minutes.toInt())
 }
 
+/** 剩餘分鐘為 0 時顯示「即將完成」，其餘為「還剩約 …」。 */
 @Composable
-private fun Actions(state: SimulatorUiState, onEvent: (SimulatorEvent) -> Unit) {
-    when (state.status) {
-        SimulationStatus.IDLE, SimulationStatus.READY ->
-            PrimaryButton(R.string.sim_action_start, enabled = state.canStart) { onEvent(SimulatorEvent.Start) }
-        SimulationStatus.RUNNING ->
-            PrimaryButton(R.string.sim_action_pause) { onEvent(SimulatorEvent.Pause) }
-        SimulationStatus.PAUSED ->
-            ButtonPair(R.string.sim_action_resume, SimulatorEvent.Resume, onEvent)
-        SimulationStatus.COMPLETED ->
-            PrimaryButton(R.string.sim_action_new) { onEvent(SimulatorEvent.Reset) }
-        SimulationStatus.FAILED, SimulationStatus.PERMISSION_REVOKED ->
-            ButtonPair(R.string.sim_action_retry, SimulatorEvent.Retry, onEvent)
-    }
+private fun remainingText(minutes: Long): String = when (val time = RemainingTime.of(minutes)) {
+    RemainingTime.Soon -> stringResource(R.string.remaining_soon)
+    else -> stringResource(R.string.remaining, durationText(time))
 }
 
-@Composable
-private fun PrimaryButton(@StringRes label: Int, enabled: Boolean = true, onClick: () -> Unit) {
-    Button(onClick = onClick, enabled = enabled, modifier = Modifier.fillMaxWidth()) {
-        Text(stringResource(label))
-    }
-}
-
-/** 主要操作加上「結束並重設」。 */
-@Composable
-private fun ButtonPair(@StringRes primary: Int, primaryEvent: SimulatorEvent, onEvent: (SimulatorEvent) -> Unit) {
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Button(onClick = { onEvent(primaryEvent) }, modifier = Modifier.weight(1f)) {
-            Text(stringResource(primary))
-        }
-        OutlinedButton(onClick = { onEvent(SimulatorEvent.Reset) }, modifier = Modifier.weight(1f)) {
-            Text(stringResource(R.string.sim_action_reset))
-        }
-    }
-}
-
-/** 主訊息用人話；技術細節另外以次要文字顯示。對應邏輯見 [failureMessageFor]。 */
+/** 主訊息用白話；技術細節只放在「詳細資訊」。對應邏輯見 [failureMessageFor]。 */
 @StringRes
 private fun FailureMessage.stringRes(): Int = when (this) {
-    FailureMessage.PERMISSION_RESTORED -> R.string.sim_failed_permission_restored
-    FailureMessage.PERMISSION_UNCONFIRMED -> R.string.sim_failed_permission_unconfirmed
-    FailureMessage.HEALTH_CONNECT_UNAVAILABLE -> R.string.sim_failed_unavailable
-    FailureMessage.RATE_LIMITED -> R.string.sim_failed_rate_limited
-    FailureMessage.IO -> R.string.sim_failed_io
-    FailureMessage.REMOTE -> R.string.sim_failed_remote
-    FailureMessage.GENERIC -> R.string.sim_failed_generic
+    FailureMessage.PERMISSION_RESTORED -> R.string.err_permission_regranted
+    FailureMessage.PERMISSION_UNCONFIRMED -> R.string.err_permission
+    FailureMessage.HEALTH_CONNECT_UNAVAILABLE -> R.string.err_unavailable
+    FailureMessage.RATE_LIMITED -> R.string.err_rate_limit
+    FailureMessage.IO, FailureMessage.REMOTE -> R.string.err_io
+    FailureMessage.GENERIC -> R.string.err_generic_body
 }
 
 private fun technicalDetail(failure: Throwable): String {
@@ -372,12 +554,6 @@ private fun technicalDetail(failure: Throwable): String {
 }
 
 private val QUICK_TARGETS = listOf(1_000L, 5_000L, 10_000L)
-
-private val timeFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss")
-
-private fun formatSteps(steps: Long): String = "%,d".format(steps)
-
-private fun formatTime(instant: Instant): String = timeFormatter.format(instant.atZone(ZoneId.systemDefault()))
 
 private tailrec fun Context.findActivity(): Activity? = when (this) {
     is Activity -> this
