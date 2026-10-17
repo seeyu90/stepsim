@@ -23,6 +23,25 @@ class StringsVocabularyTest {
         "perm_point_4" to setOf("獎勵"),
     )
 
+    /**
+     * 「模擬」只用在說明用途的文字；按鈕、狀態與通知的動詞不加「模擬」（開始、暫停、繼續、結束、完成、再來一次）。
+     * 前綴以 `_` 結尾者比對整個前綴。
+     */
+    private val simulationWordKeys = listOf(
+        "app_subtitle",
+        "perm_why",
+        "perm_point_1",
+        "guide_",
+        "rationale_write",
+        "end_confirm_",
+        // 尚未決定新文案，先保留
+        "perm_status_granted",
+        "perm_back_to_sim",
+    )
+
+    private fun explainsPurpose(key: String) =
+        simulationWordKeys.any { if (it.endsWith("_")) key.startsWith(it) else key == it }
+
     /** Gradle 單元測試的工作目錄是模組目錄（app/）。 */
     private val stringsFile = File("src/main/res/values/strings.xml")
 
@@ -74,5 +93,12 @@ class StringsVocabularyTest {
                 assertTrue("白名單的 $key 已不含「$word」，請一併移除例外：$text", word in text!!)
             }
         }
+    }
+
+    @Test
+    fun `simulation word only appears in strings that explain the purpose`() {
+        val violations = textNodes().filter { "模擬" in it.text && !explainsPurpose(it.key) }
+            .map { "${it.label}：${it.text}" }
+        assertEquals("「模擬」只用在說明用途的文字：\n" + violations.joinToString("\n"), emptyList<String>(), violations)
     }
 }

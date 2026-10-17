@@ -33,7 +33,7 @@
     <string name="unit_steps">步</string>
     <string name="checking">正在確認 Health Connect…</string>
     <string name="perm_check_failed">暫時無法確認權限，請稍後再試一次。</string>
-    <string name="hero_empty">先設定要模擬的步數</string>
+    <string name="hero_empty">先設定目標步數</string>
     <string name="goal_label">目標步數</string>
     <!-- %1$s＝目標上限（StepSimulator.MAX_TARGET_STEPS，依 Locale 加千分位） -->
     <string name="goal_hint">輸入 1 到 %1$s</string>
@@ -46,7 +46,7 @@
     <string name="speed_walk">走路（約每分鐘 %1$d 步）</string>
     <string name="speed_run">跑步（約每分鐘 %1$d 步）</string>
     <string name="estimate">預計約需 %1$s，步數會依真實時間慢慢存入</string>
-    <string name="cta_start">開始模擬</string>
+    <string name="cta_start">開始</string>
     <string name="cta_hint_need_goal">請先輸入目標步數</string>
     <string name="cta_hint_need_permission">請先允許 StepSim 存入步數</string>
     <string name="ring_goal">目標 %1$s 步</string>
@@ -55,8 +55,8 @@
     <string name="detail_batches">已存入 %1$d 批</string>
     <string name="detail_last">最後存入 %1$s</string>
     <string name="detail_range">存入時間 %1$s–%2$s</string>
-    <string name="status_walking">走路模擬中</string>
-    <string name="status_running">跑步模擬中</string>
+    <string name="status_walking">走路中</string>
+    <string name="status_running">跑步中</string>
     <string name="status_rate">每分鐘約 %1$d 步</string>
     <string name="remaining">還剩約 %1$s</string>
     <string name="remaining_soon">即將完成</string>
@@ -64,19 +64,19 @@
     <string name="duration_hour">%1$d 小時</string>
     <string name="duration_hour_min">%1$d 小時 %2$d 分鐘</string>
     <string name="cta_pause">暫停</string>
-    <string name="tip_leave">離開時請回到手機主畫面，不要從「最近使用」把 StepSim 滑掉，部分手機會因此中斷模擬。</string>
+    <string name="tip_leave">離開時請回到手機主畫面，不要從「最近使用」把 StepSim 滑掉，部分手機會因此中斷。</string>
     <string name="status_paused">已暫停</string>
-    <string name="paused_hint">暫停期間不會存入步數，按「繼續」會從現在開始接著模擬。</string>
+    <string name="paused_hint">暫停期間不會存入步數，按「繼續」會從現在接著存入。</string>
     <string name="cta_resume">繼續</string>
-    <string name="cta_end">結束本次模擬</string>
+    <string name="cta_end">結束</string>
     <string name="end_confirm_title">結束本次模擬？</string>
     <string name="end_confirm_body">進度會歸零，已存入 Health Connect 的步數會保留。</string>
     <string name="end_confirm_yes">結束</string>
     <string name="end_confirm_no">取消</string>
-    <string name="status_done">模擬完成</string>
+    <string name="status_done">完成</string>
     <string name="done_title">已存入 %1$s 步</string>
     <string name="done_body">可以到 Health Connect 查看今天的步數。</string>
-    <string name="cta_new">再模擬一次</string>
+    <string name="cta_new">再來一次</string>
     <string name="status_failed">需要處理</string>
     <string name="err_generic_title">這一批步數沒存進去</string>
     <string name="err_generic_body">請稍後再試一次。已存入的步數不受影響。</string>
@@ -107,22 +107,22 @@
     <string name="perm_back">返回</string>
 
     <!-- 前景服務通知：key 名稱與參數簽名由 SimulationService 決定，只能換文字 -->
-    <string name="notif_channel_name">步數模擬進度</string>
+    <string name="notif_channel_name">步數進度</string>
     <string name="notif_title_starting">StepSim</string>
     <!-- %1$s＝步態名稱（sim_gait_walk／sim_gait_run），%2$d＝每分鐘步數 -->
-    <string name="notif_title_running">%1$s模擬中 · 每分鐘約 %2$d 步</string>
-    <string name="notif_title_paused">已暫停（模擬）</string>
+    <string name="notif_title_running">%1$s中 · 每分鐘約 %2$d 步</string>
+    <string name="notif_title_paused">已暫停</string>
     <!-- %1$d＝失敗的批次編號（SimulationService 會傳入；沒有佔位符時 lint 判為 StringFormatInvalid） -->
     <string name="notif_title_failed">步數沒存進去（第 %1$d 批）</string>
     <string name="notif_text_failed">請開啟 StepSim 再試一次</string>
     <string name="notif_title_permission">需要重新允許權限</string>
     <string name="notif_text_permission">請開啟 StepSim 確認權限</string>
-    <string name="notif_title_completed">模擬完成</string>
+    <string name="notif_title_completed">完成</string>
     <!-- %1$s＝已存入步數、%2$s＝目標步數、%3$d＝百分比；完成通知的內文也用這個 -->
     <string name="notif_progress">已存入 %1$s / %2$s 步（%3$d%%）</string>
     <string name="notif_action_pause">暫停</string>
     <string name="notif_action_resume">繼續</string>
-    <string name="notif_action_stop">結束本次模擬</string>
+    <string name="notif_action_stop">結束</string>
 
     <!-- Rationale 頁（只說明「存入」） -->
     <string name="rationale_title">StepSim 為什麼需要步數權限</string>

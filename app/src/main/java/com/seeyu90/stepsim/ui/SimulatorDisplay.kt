@@ -66,5 +66,5 @@ fun shouldShowEndDialog(confirmEnd: Boolean, hasStarted: Boolean): Boolean = con
 fun showLeaveTip(status: SimulationStatus): Boolean =
     status == SimulationStatus.RUNNING || status == SimulationStatus.PAUSED
 
-/** 「開始模擬」停用時，按鈕下方的原因。 */
+/** 「開始」停用時，按鈕下方的原因。 */
 enum class StartHint { NEED_GOAL }
