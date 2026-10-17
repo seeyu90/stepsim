@@ -352,7 +352,7 @@ private fun SettingsCard(state: SimulatorUiState, locale: Locale, onEvent: (Simu
             suffix = { Text(stringResource(R.string.unit_steps)) },
             isError = state.targetError != null,
             supportingText = {
-                Text(stringResource(if (state.targetError != null) R.string.goal_error else R.string.goal_hint))
+                Text(stringResource(if (state.targetError != null) R.string.goal_error else R.string.goal_hint, goalLimitText(locale)))
             },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             textStyle = MaterialTheme.typography.bodyLarge,
@@ -416,7 +416,7 @@ private fun GaitSelector(state: SimulatorUiState, onEvent: (SimulatorEvent) -> U
                         modifier = Modifier.size(24.dp),
                     )
                     Text(
-                        stringResource(if (gait == Gait.WALK) R.string.speed_walk else R.string.speed_run),
+                        stringResource(if (gait == Gait.WALK) R.string.speed_walk else R.string.speed_run, gait.stepsPerMinute),
                         style = MaterialTheme.typography.bodyLarge,
                         modifier = Modifier.weight(1f),
                     )

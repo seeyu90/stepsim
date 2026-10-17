@@ -36,14 +36,16 @@
     <string name="perm_check_failed">暫時無法確認權限，請稍後再試一次。</string>
     <string name="hero_empty">先設定要模擬的步數</string>
     <string name="goal_label">目標步數</string>
-    <string name="goal_hint">輸入 1 到 100,000</string>
-    <string name="goal_error">請輸入 1 到 100,000 之間的數字</string>
+    <!-- %1$s＝目標上限（StepSimulator.MAX_TARGET_STEPS，依 Locale 加千分位） -->
+    <string name="goal_hint">輸入 1 到 %1$s</string>
+    <string name="goal_error">請輸入 1 到 %1$s 之間的數字</string>
     <string name="speed_label">速度</string>
     <!-- 走路／跑步名稱：通知標題也會用到（SimulationService），key 不可改名 -->
     <string name="sim_gait_walk">走路</string>
     <string name="sim_gait_run">跑步</string>
-    <string name="speed_walk">走路（約每分鐘 100 步）</string>
-    <string name="speed_run">跑步（約每分鐘 160 步）</string>
+    <!-- %1$d＝每分鐘步數（Gait.stepsPerMinute） -->
+    <string name="speed_walk">走路（約每分鐘 %1$d 步）</string>
+    <string name="speed_run">跑步（約每分鐘 %1$d 步）</string>
     <string name="estimate">預計約需 %1$s，步數會依真實時間慢慢存入</string>
     <string name="cta_start">開始模擬</string>
     <string name="cta_hint_need_goal">請先輸入目標步數</string>

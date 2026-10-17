@@ -1,5 +1,6 @@
 package com.seeyu90.stepsim.ui
 
+import com.seeyu90.stepsim.simulator.StepSimulator
 import java.text.NumberFormat
 import java.time.Instant
 import java.time.ZoneId
@@ -11,6 +12,9 @@ import java.util.Locale
 
 /** 步數加千分位，依 Locale 格式化（例如 zh-TW 為 1,000，de-DE 為 1.000）。 */
 fun formatSteps(steps: Long, locale: Locale): String = NumberFormat.getIntegerInstance(locale).format(steps)
+
+/** 目標上限的顯示文字（goal_hint／goal_error 的參數），由常數產生，不寫死在字串裡。 */
+fun goalLimitText(locale: Locale): String = formatSteps(StepSimulator.MAX_TARGET_STEPS, locale)
 
 /** 時刻（例如最後存入時間），依 Locale 的短時間格式。 */
 fun formatClockTime(instant: Instant, zone: ZoneId, locale: Locale): String =
