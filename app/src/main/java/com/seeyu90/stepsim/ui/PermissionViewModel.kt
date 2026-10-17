@@ -38,7 +38,10 @@ data class PermissionUiState(
     val granted: Boolean = false,
     val checked: Boolean = false,
     val refreshFailed: Boolean = false,
-    /** 本次進入授權頁後，曾請求權限且結果仍未授權。重新檢查時保留，取得授權後清掉。 */
+    /**
+     * 曾請求權限且結果仍未授權。標記存在 Activity 範圍的 ViewModel：使用者離開授權頁再回來仍在，
+     * 重新檢查時也保留，直到取得授權才清掉。
+     */
     val deniedAfterRequest: Boolean = false,
 ) {
     val stage: PermissionStage

@@ -1,7 +1,7 @@
 <resources>
     <string name="app_name">StepSim</string>
 
-    <!-- 授權頁（階段 9.5；文案見 docs/phase-9.5/copy.md） -->
+    <!-- 授權頁 -->
     <string name="perm_title">允許 StepSim 存入步數</string>
     <string name="perm_why">StepSim 要把你設定的模擬步數存進手機的健康資料（Health Connect），其他健康 App 才讀得到。需要你允許「步數」權限。</string>
     <string name="perm_point_1">只會存入你在這裡設定的模擬步數。</string>
@@ -28,7 +28,7 @@
     <string name="toast_install_failed">無法開啟 Play 商店，請手動安裝 Health Connect</string>
     <string name="toast_settings_failed">無法開啟 Health Connect，請到系統設定手動開啟</string>
 
-    <!-- 主畫面（階段 9.5；文案見 docs/phase-9.5/copy.md） -->
+    <!-- 主畫面 -->
     <string name="app_subtitle">步數模擬</string>
     <string name="chip_simulated">模擬資料</string>
     <string name="unit_steps">步</string>

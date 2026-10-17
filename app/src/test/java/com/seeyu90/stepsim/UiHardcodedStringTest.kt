@@ -10,6 +10,9 @@ import org.junit.Test
  * 文案一律放在 strings.xml（多語系與改名時才不會漏）。
  *
  * 不檢查：註解、package／import、`@Preview(...)` 的參數（Preview 名稱只在 Android Studio 顯示）。
+ *
+ * 限制：只抓中日韓文字與 "StepSim"，**不抓寫死的英文**（英文常值多為技術字串，難以和文案區分）；
+ * 只掃描 ui/，其他套件不在範圍內。
  */
 class UiHardcodedStringTest {
 

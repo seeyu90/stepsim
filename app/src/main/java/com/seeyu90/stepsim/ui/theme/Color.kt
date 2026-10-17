@@ -2,8 +2,8 @@ package com.seeyu90.stepsim.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// 湖水綠品牌色。對比值（WCAG 2.x）見 docs/phase-9.5/plan.md §2.1；
-// primary 文字放在 primaryContainer 上只有 4.43，不及格：容器內文字一律用 onPrimaryContainer。
+// 湖水綠品牌色。文字與背景的組合皆符合 WCAG AA（4.5:1 以上），例外只有一組：
+// primary 文字放在 primaryContainer 上只有 4.43，不及格，容器內文字一律用 onPrimaryContainer。
 
 // 淺色
 val TealPrimaryLight = Color(0xFF00796B)

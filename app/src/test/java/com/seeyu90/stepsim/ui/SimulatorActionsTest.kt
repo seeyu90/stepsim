@@ -13,7 +13,11 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** 底部主按鈕、次要操作與其他顯示用衍生屬性；失敗時的對照表見 docs/phase-9.5/decisions.md。 */
+/**
+ * 底部主按鈕、次要操作與其他顯示用衍生屬性。失敗時的對照：一般錯誤與太頻繁→再試一次；
+ * 權限被撤銷且未確認→前往允許（另保留再試一次）；權限已恢復→再試一次；確認未授權→前往允許；
+ * Health Connect 不可用→前往確認。已開始的模擬一律可結束。
+ */
 class SimulatorActionsTest {
 
     private fun ui(

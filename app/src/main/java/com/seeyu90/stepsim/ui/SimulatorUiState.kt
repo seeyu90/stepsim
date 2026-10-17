@@ -122,7 +122,7 @@ data class SimulatorUiState(
 
     /**
      * 底部固定的主要動作；null 代表不顯示（例如權限檢查中）。
-     * 失敗時依原因決定（對照表見 docs/phase-9.5/decisions.md「失敗時的按鈕」）。
+     * 失敗時依原因決定（對照表由 SimulatorActionsTest 逐列驗證）。
      */
     val bottomAction: BottomAction?
         get() = when {
