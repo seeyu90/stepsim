@@ -110,17 +110,20 @@
     <string name="guide_8">你可以隨時到 Health Connect 撤銷權限或刪除資料。</string>
     <string name="perm_back">返回</string>
 
-    <!-- 前景服務通知 -->
-    <string name="notif_channel_name">步數模擬</string>
-    <string name="notif_title_starting">步數模擬</string>
-    <string name="notif_title_running">%1$s中 · %2$d 步/分</string>
-    <string name="notif_title_paused">已暫停</string>
-    <string name="notif_title_failed">寫入失敗（第 %1$d 批）</string>
-    <string name="notif_text_failed">請開啟 App 重試，或結束本次模擬</string>
-    <string name="notif_title_permission">寫入權限不足</string>
-    <string name="notif_text_permission">請開啟 App 重新授權後重試，或結束本次模擬</string>
-    <string name="notif_title_completed">模擬已完成</string>
-    <string name="notif_progress">%1$s / %2$s 步（%3$d%%）</string>
+    <!-- 前景服務通知：key 名稱與參數簽名由 SimulationService 決定，只能換文字 -->
+    <string name="notif_channel_name">步數模擬進度</string>
+    <string name="notif_title_starting">StepSim</string>
+    <!-- %1$s＝步態名稱（sim_gait_walk／sim_gait_run），%2$d＝每分鐘步數 -->
+    <string name="notif_title_running">%1$s模擬中 · 每分鐘約 %2$d 步</string>
+    <string name="notif_title_paused">已暫停（模擬）</string>
+    <!-- %1$d＝失敗的批次編號（SimulationService 會傳入；沒有佔位符時 lint 判為 StringFormatInvalid） -->
+    <string name="notif_title_failed">步數沒存進去（第 %1$d 批）</string>
+    <string name="notif_text_failed">請開啟 StepSim 再試一次</string>
+    <string name="notif_title_permission">需要重新允許權限</string>
+    <string name="notif_text_permission">請開啟 StepSim 確認權限</string>
+    <string name="notif_title_completed">模擬完成</string>
+    <!-- %1$s＝已存入步數、%2$s＝目標步數、%3$d＝百分比；完成通知的內文也用這個 -->
+    <string name="notif_progress">已存入 %1$s / %2$s 步（%3$d%%）</string>
     <string name="notif_action_pause">暫停</string>
     <string name="notif_action_resume">繼續</string>
     <string name="notif_action_stop">結束本次模擬</string>
