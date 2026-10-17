@@ -62,6 +62,17 @@ class PermissionStageTest {
     }
 
     @Test
+    fun `responsible use is shown in every stage of the permission page`() {
+        for (stage in PermissionStage.entries) {
+            assertTrue("stage=$stage", showsResponsibleUse(stage))
+        }
+        // 與授權直接相關的階段顯示完整四點
+        for (stage in listOf(PermissionStage.NOT_GRANTED, PermissionStage.NEEDS_MANUAL, PermissionStage.GRANTED)) {
+            assertEquals("stage=$stage", PermissionPoint.entries, permissionPoints(stage))
+        }
+    }
+
+    @Test
     fun `requesting is possible before and after a denial`() {
         assertTrue(PermissionUiState(available, granted = false, checked = true).canRequest)
         assertTrue(PermissionUiState(available, granted = false, checked = true, deniedAfterRequest = true).canRequest)

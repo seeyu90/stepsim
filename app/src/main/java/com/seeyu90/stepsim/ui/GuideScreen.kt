@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import com.seeyu90.stepsim.R
 import com.seeyu90.stepsim.ui.components.InfoCard
 import com.seeyu90.stepsim.ui.components.SecondaryTextButton
+import com.seeyu90.stepsim.ui.components.SimulatedDataBadge
 
 /** 使用說明頁的條目順序；guide_battery 接在 guide_6 之後。 */
 private val GuideItems = listOf(
@@ -57,7 +58,7 @@ fun GuideScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             BrandMark()
-            Column {
+            Column(Modifier.weight(1f)) {
                 Text(stringResource(R.string.app_name), style = MaterialTheme.typography.headlineSmall)
                 Text(
                     stringResource(R.string.app_subtitle),
@@ -65,6 +66,7 @@ fun GuideScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
+            SimulatedDataBadge(stringResource(R.string.chip_simulated))
         }
         Text(
             stringResource(R.string.guide_title),

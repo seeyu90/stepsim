@@ -33,6 +33,20 @@ enum class PermissionStage {
     GRANTED,
 }
 
+/** 授權頁的說明條目；[RESPONSIBLE_USE] 是責任使用條文（perm_point_4）。 */
+enum class PermissionPoint { ONLY_SIMULATED, NO_UPLOAD, REVOKE_ANYTIME, RESPONSIBLE_USE }
+
+/**
+ * 各階段顯示的說明條目。責任使用條文在所有階段都顯示（授權頁是使用者必經的第一個畫面）；
+ * 完整的四點只在與授權直接相關的階段顯示。
+ */
+fun permissionPoints(stage: PermissionStage): List<PermissionPoint> = when (stage) {
+    PermissionStage.NOT_GRANTED, PermissionStage.NEEDS_MANUAL, PermissionStage.GRANTED -> PermissionPoint.entries
+    else -> listOf(PermissionPoint.RESPONSIBLE_USE)
+}
+
+fun showsResponsibleUse(stage: PermissionStage): Boolean = PermissionPoint.RESPONSIBLE_USE in permissionPoints(stage)
+
 data class PermissionUiState(
     val availability: HealthConnectAvailability = HealthConnectAvailability.NOT_SUPPORTED,
     val granted: Boolean = false,
