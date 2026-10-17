@@ -34,7 +34,6 @@
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:label="@string/app_name"
             android:theme="@style/Theme.StepSim"
             android:windowSoftInputMode="adjustResize">
             <intent-filter>
@@ -47,8 +46,7 @@
         <!-- Health Connect 授權視窗的「說明」入口；缺少它授權視窗不會跳出 -->
         <activity
             android:name=".ui.PermissionsRationaleActivity"
-            android:exported="true"
-            android:label="@string/app_name">
+            android:exported="true">
             <intent-filter>
                 <action android:name="androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE" />
             </intent-filter>
