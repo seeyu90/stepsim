@@ -73,14 +73,6 @@ class PermissionStageTest {
     }
 
     @Test
-    fun `requesting is possible before and after a denial`() {
-        assertTrue(PermissionUiState(available, granted = false, checked = true).canRequest)
-        assertTrue(PermissionUiState(available, granted = false, checked = true, deniedAfterRequest = true).canRequest)
-        assertFalse(PermissionUiState(available, granted = true, checked = true).canRequest)
-        assertFalse(PermissionUiState(HealthConnectAvailability.NEEDS_INSTALL, checked = true).canRequest)
-    }
-
-    @Test
     fun `empty result after a request leads to manual steps`() = runTest(dispatcher) {
         manager.granted = false
         val viewModel = PermissionViewModel(manager)

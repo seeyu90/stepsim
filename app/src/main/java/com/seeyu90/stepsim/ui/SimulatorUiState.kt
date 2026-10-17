@@ -81,10 +81,6 @@ data class SimulatorUiState(
     val showBackgroundUnavailable: Boolean
         get() = !backgroundAvailable && shouldRunForeground(status)
 
-    /** 執行中提示「離開 App 會在背景繼續」；前景服務無法啟動時這句話不成立，由「無法在背景執行」取代。 */
-    val showForegroundHint: Boolean
-        get() = status == SimulationStatus.RUNNING && backgroundAvailable
-
     /** 模擬已開始（含暫停與失敗）：這時一律要能「結束本次模擬」。 */
     val hasStarted: Boolean
         get() = status == SimulationStatus.RUNNING || status == SimulationStatus.PAUSED || isFailed

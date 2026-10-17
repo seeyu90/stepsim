@@ -69,10 +69,6 @@ data class PermissionUiState(
             deniedAfterRequest -> PermissionStage.NEEDS_MANUAL
             else -> PermissionStage.NOT_GRANTED
         }
-
-    /** 可以（再次）跳出系統授權視窗。 */
-    val canRequest: Boolean
-        get() = stage == PermissionStage.NOT_GRANTED || stage == PermissionStage.NEEDS_MANUAL
 }
 
 class PermissionViewModel(private val manager: HealthConnectManager) : ViewModel() {

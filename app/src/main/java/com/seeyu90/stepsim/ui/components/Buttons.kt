@@ -14,7 +14,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.unit.dp
 
@@ -48,7 +47,6 @@ fun SecondaryTextButton(
     text: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    color: Color = Color.Unspecified,
 ) {
     TextButton(
         onClick = onClick,
@@ -59,7 +57,7 @@ fun SecondaryTextButton(
         Text(
             text,
             style = MaterialTheme.typography.labelLarge,
-            color = if (color == Color.Unspecified) MaterialTheme.colorScheme.primary else color,
+            color = MaterialTheme.colorScheme.primary,
         )
     }
 }
