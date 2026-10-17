@@ -57,6 +57,10 @@ private fun RingCompactPreview() = Frame {
     StepRing(0f, "0", stringResource(R.string.unit_steps), "", size = StepRingSize.COMPACT)
 }
 
+@Preview(name = "圓環 · 準備（176dp）· 壓力測試 · 字體 2.0 倍", showBackground = true, fontScale = 2f)
+@Composable
+private fun RingCompactStressPreview() = Frame { StressRing(StepRingSize.COMPACT) }
+
 @Preview(name = "圓環 · 失敗（灰色進度弧）", showBackground = true)
 @Composable
 private fun RingFailedPreview() = Frame {
