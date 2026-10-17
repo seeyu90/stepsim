@@ -62,9 +62,12 @@ enum class SecondaryAction { RETRY, END, START_NEW }
  */
 fun shouldShowEndDialog(confirmEnd: Boolean, hasStarted: Boolean): Boolean = confirmEnd && hasStarted
 
-/** 「離開時請回到主畫面」的提醒只在執行中與暫停時顯示（失敗、完成、尚未開始時不顯示）。 */
-fun showLeaveTip(status: SimulationStatus): Boolean =
-    status == SimulationStatus.RUNNING || status == SimulationStatus.PAUSED
+/**
+ * 「離開時請回到主畫面」的提醒只在執行中與暫停時顯示（失敗、完成、尚未開始時不顯示）。
+ * 背景不可用時離開就會中斷，與 bg_unavailable（請保持在畫面上）矛盾，所以不顯示。
+ */
+fun showLeaveTip(status: SimulationStatus, backgroundAvailable: Boolean): Boolean =
+    backgroundAvailable && (status == SimulationStatus.RUNNING || status == SimulationStatus.PAUSED)
 
 /** 「開始」停用時，按鈕下方的原因。 */
 enum class StartHint { NEED_GOAL }

@@ -1,5 +1,6 @@
 package com.seeyu90.stepsim.ui
 
+import com.seeyu90.stepsim.simulator.SimulationState
 import com.seeyu90.stepsim.simulator.SimulationStatus
 import java.time.Instant
 import java.time.ZoneId
@@ -48,7 +49,25 @@ class SimulatorDisplayTest {
     fun `leave tip only while running or paused`() {
         val shown = setOf(SimulationStatus.RUNNING, SimulationStatus.PAUSED)
         for (status in SimulationStatus.entries) {
-            assertEquals("status=$status", status in shown, showLeaveTip(status))
+            assertEquals("status=$status", status in shown, showLeaveTip(status, backgroundAvailable = true))
+        }
+    }
+
+    /** 背景不可用時只留 bg_unavailable（請保持在畫面上），不顯示互相矛盾的「離開時請回到主畫面」。 */
+    @Test
+    fun `leave tip and background unavailable warning never show together`() {
+        for (status in listOf(SimulationStatus.RUNNING, SimulationStatus.PAUSED)) {
+            for (background in listOf(true, false)) {
+                val ui = SimulatorUiState(
+                    permissionGranted = true,
+                    healthConnectAvailable = true,
+                    simulation = SimulationState(status = status, targetSteps = 5_000),
+                    backgroundAvailable = background,
+                )
+                val tip = showLeaveTip(ui.status, ui.backgroundAvailable)
+                assertEquals("status=$status backgroundAvailable=$background: tip", background, tip)
+                assertEquals("status=$status backgroundAvailable=$background: warning", !background, ui.showBackgroundUnavailable)
+            }
         }
     }
 }

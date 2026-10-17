@@ -157,7 +157,7 @@ fun SimulatorScreen(
                 state.showAccessNoticeCard -> AccessContent(state)
             }
             SecondaryActions(state, onEvent, onEnd = { confirmEnd = true })
-            if (showLeaveTip(state.status)) LeaveTip()
+            if (showLeaveTip(state.status, state.backgroundAvailable)) LeaveTip()
             SecondaryTextButton(stringResource(R.string.disclaimer_link), onClick = onOpenGuide)
             if (state.showMainContent) Details(state, locale)
         }

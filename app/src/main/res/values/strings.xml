@@ -9,7 +9,7 @@
     <string name="perm_point_3">你隨時可以到 Health Connect 撤銷權限或刪除資料。</string>
     <string name="perm_point_4">請勿用於競賽、獎勵、保險等需要真實運動證明的場合。</string>
     <string name="perm_cta">繼續</string>
-    <string name="perm_status_granted">已允許，可以開始模擬了</string>
+    <string name="perm_status_granted">已允許，可以開始了</string>
     <string name="perm_status_denied">尚未允許</string>
     <string name="perm_manual_title">還沒有取得權限</string>
     <string name="perm_manual_body">如果再按一次沒有跳出視窗，請照下面步驟手動開啟：</string>
@@ -18,7 +18,7 @@
     <string name="perm_manual_step_3">打開「步數」的權限，然後回到 StepSim</string>
     <string name="perm_retry">再試一次</string>
     <string name="perm_open_hc">開啟 Health Connect</string>
-    <string name="perm_back_to_sim">回到模擬</string>
+    <string name="perm_back_to_sim">回到主畫面</string>
     <string name="perm_reset_perm">重新設定權限</string>
     <string name="perm_need_install">這支手機還沒有 Health Connect。請先安裝，才能存入步數。</string>
     <string name="perm_need_update">Health Connect 需要更新，才能存入步數。</string>

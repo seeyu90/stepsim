@@ -34,9 +34,6 @@ class StringsVocabularyTest {
         "guide_",
         "rationale_write",
         "end_confirm_",
-        // 尚未決定新文案，先保留
-        "perm_status_granted",
-        "perm_back_to_sim",
     )
 
     private fun explainsPurpose(key: String) =
