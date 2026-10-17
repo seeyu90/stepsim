@@ -30,7 +30,6 @@ import androidx.compose.ui.unit.dp
 import com.seeyu90.stepsim.R
 import com.seeyu90.stepsim.ui.components.InfoCard
 import com.seeyu90.stepsim.ui.components.SecondaryTextButton
-import com.seeyu90.stepsim.ui.components.SimulatedDataBadge
 
 /** 使用說明頁的條目順序；guide_battery 接在 guide_6 之後。 */
 private val GuideItems = listOf(
@@ -66,7 +65,6 @@ fun GuideScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            SimulatedDataBadge(stringResource(R.string.chip_simulated))
         }
         Text(
             stringResource(R.string.guide_title),

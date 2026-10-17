@@ -41,7 +41,6 @@ import com.seeyu90.stepsim.ui.components.InfoCard
 import com.seeyu90.stepsim.ui.components.NoticeCard
 import com.seeyu90.stepsim.ui.components.PrimaryButton
 import com.seeyu90.stepsim.ui.components.SecondaryTextButton
-import com.seeyu90.stepsim.ui.components.SimulatedDataBadge
 
 /** 接 ViewModel 的外層：重新檢查、跳出系統授權視窗、開啟 Health Connect 或 Play 商店。 */
 @Composable
@@ -106,16 +105,11 @@ fun PermissionContent(state: PermissionUiState, actions: PermissionActions, modi
                 .padding(horizontal = 20.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text(
-                    stringResource(R.string.perm_title),
-                    style = MaterialTheme.typography.headlineSmall,
-                    modifier = Modifier
-                        .weight(1f)
-                        .semantics { heading() },
-                )
-                SimulatedDataBadge(stringResource(R.string.chip_simulated))
-            }
+            Text(
+                stringResource(R.string.perm_title),
+                style = MaterialTheme.typography.headlineSmall,
+                modifier = Modifier.semantics { heading() },
+            )
             when (stage) {
                 PermissionStage.CHECKING -> BodyText(R.string.checking)
                 PermissionStage.CHECK_FAILED -> NoticeCard(stringResource(R.string.perm_check_failed))
@@ -129,7 +123,7 @@ fun PermissionContent(state: PermissionUiState, actions: PermissionActions, modi
                 PermissionStage.NEEDS_MANUAL -> ManualSteps()
                 PermissionStage.GRANTED -> StatusLine(R.string.perm_status_granted, granted = true)
             }
-            // 說明條目：責任使用條文在所有階段都顯示
+            // 說明條目（含責任使用條文）只在使用者可以繼續允許的階段顯示
             Points(permissionPoints(stage))
             // 次要操作
             when (stage) {
@@ -146,16 +140,14 @@ fun PermissionContent(state: PermissionUiState, actions: PermissionActions, modi
 
 @Composable
 private fun BottomAction(stage: PermissionStage, actions: PermissionActions) {
-    val (label, onClick) = when (stage) {
-        PermissionStage.CHECKING -> return
-        PermissionStage.CHECK_FAILED -> R.string.perm_retry to actions.recheck
-        PermissionStage.NEEDS_INSTALL -> R.string.btn_install_hc to actions.install
-        PermissionStage.NEEDS_UPDATE -> R.string.btn_update_hc to actions.install
-        // 不支援時沒有可做的事，只能返回
-        PermissionStage.NOT_SUPPORTED -> R.string.perm_back to actions.back
-        PermissionStage.NOT_GRANTED -> R.string.perm_cta to actions.request
-        PermissionStage.NEEDS_MANUAL -> R.string.perm_retry to actions.request
-        PermissionStage.GRANTED -> R.string.perm_back_to_sim to actions.back
+    val (label, onClick) = when (permissionBottomAction(stage) ?: return) {
+        PermissionBottomAction.RECHECK -> R.string.perm_retry to actions.recheck
+        PermissionBottomAction.INSTALL -> R.string.btn_install_hc to actions.install
+        PermissionBottomAction.UPDATE -> R.string.btn_update_hc to actions.install
+        PermissionBottomAction.BACK -> R.string.perm_back to actions.back
+        PermissionBottomAction.REQUEST -> R.string.perm_cta to actions.request
+        PermissionBottomAction.REQUEST_AGAIN -> R.string.perm_retry to actions.request
+        PermissionBottomAction.BACK_TO_SIMULATOR -> R.string.perm_back_to_sim to actions.back
     }
     Surface(color = MaterialTheme.colorScheme.background) {
         PrimaryButton(
@@ -189,9 +181,10 @@ private fun StatusLine(@StringRes text: Int, granted: Boolean) {
     }
 }
 
-/** 授權說明條目；第四點（RESPONSIBLE_USE）是責任使用，所有階段都會出現。 */
+/** 授權說明條目；第四點（RESPONSIBLE_USE）是責任使用。沒有條目的階段不顯示卡片。 */
 @Composable
 private fun Points(points: List<PermissionPoint>) {
+    if (points.isEmpty()) return
     InfoCard {
         for (point in points.map { it.stringRes() }) {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {

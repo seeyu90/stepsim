@@ -62,13 +62,21 @@ class PermissionStageTest {
     }
 
     @Test
-    fun `responsible use is shown in every stage of the permission page`() {
+    fun `responsible use is shown only where the user can continue to allow`() {
+        val withPoints = setOf(PermissionStage.NOT_GRANTED, PermissionStage.NEEDS_MANUAL)
         for (stage in PermissionStage.entries) {
-            assertTrue("stage=$stage", showsResponsibleUse(stage))
+            assertEquals("stage=$stage", stage in withPoints, showsResponsibleUse(stage))
+            val expected = if (stage in withPoints) PermissionPoint.entries else emptyList()
+            assertEquals("stage=$stage", expected, permissionPoints(stage))
         }
-        // 與授權直接相關的階段顯示完整四點
-        for (stage in listOf(PermissionStage.NOT_GRANTED, PermissionStage.NEEDS_MANUAL, PermissionStage.GRANTED)) {
-            assertEquals("stage=$stage", PermissionPoint.entries, permissionPoints(stage))
+    }
+
+    @Test
+    fun `every stage whose primary button requests permission shows responsible use`() {
+        val requesting = PermissionStage.entries.filter { permissionBottomAction(it)?.requestsPermission == true }
+        assertEquals(setOf(PermissionStage.NOT_GRANTED, PermissionStage.NEEDS_MANUAL), requesting.toSet())
+        for (stage in requesting) {
+            assertTrue("stage=$stage", showsResponsibleUse(stage))
         }
     }
 

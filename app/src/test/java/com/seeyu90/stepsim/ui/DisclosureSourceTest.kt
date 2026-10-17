@@ -5,17 +5,17 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * 揭露的位置以原始碼掃描確認：主畫面一定有「使用說明與注意事項」連結；
- * 授權頁與使用說明頁仍呼叫 SimulatedDataBadge。
+ * 揭露的位置以原始碼掃描確認：主畫面一定有「使用說明與注意事項」連結，使用說明頁一定有責任使用條文（guide_3）。
+ * 授權頁的責任使用條文由 [permissionPoints] 決定，見 PermissionStageTest。
  *
- * 限制：只確認呼叫存在（去掉註解後），不保證每個分支都會渲染到；畫面檔或元件改名時要一併更新這裡。
+ * 限制：只確認呼叫存在（去掉註解後），不保證每個分支都會渲染到；畫面檔或字串改名時要一併更新這裡。
  */
 class DisclosureSourceTest {
 
     /** Gradle 單元測試的工作目錄是模組目錄（app/）。 */
     private val uiDir = File("src/main/java/com/seeyu90/stepsim/ui")
 
-    /** 去掉區塊註解與行註解，避免註解裡提到元件名稱也算數。 */
+    /** 去掉區塊註解與行註解，避免註解裡提到的名稱也算數。 */
     private fun codeOf(name: String): String {
         val file = File(uiDir, name)
         assertTrue("找不到 ${file.absolutePath}", file.isFile)
@@ -30,9 +30,7 @@ class DisclosureSourceTest {
     }
 
     @Test
-    fun `permission and guide screens show the simulated data badge`() {
-        for (name in listOf("PermissionScreen.kt", "GuideScreen.kt")) {
-            assertTrue("$name 沒有呼叫 SimulatedDataBadge(", "SimulatedDataBadge(" in codeOf(name))
-        }
+    fun `guide screen keeps the responsible use item`() {
+        assertTrue("GuideScreen.kt 沒有 guide_3", "R.string.guide_3" in codeOf("GuideScreen.kt"))
     }
 }

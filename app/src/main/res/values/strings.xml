@@ -30,7 +30,6 @@
 
     <!-- 主畫面 -->
     <string name="app_subtitle">步數模擬</string>
-    <string name="chip_simulated">模擬資料</string>
     <string name="unit_steps">步</string>
     <string name="checking">正在確認 Health Connect…</string>
     <string name="perm_check_failed">暫時無法確認權限，請稍後再試一次。</string>

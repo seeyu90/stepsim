@@ -37,15 +37,38 @@ enum class PermissionStage {
 enum class PermissionPoint { ONLY_SIMULATED, NO_UPLOAD, REVOKE_ANYTIME, RESPONSIBLE_USE }
 
 /**
- * 各階段顯示的說明條目。責任使用條文在所有階段都顯示（授權頁是使用者必經的第一個畫面）；
- * 完整的四點只在與授權直接相關的階段顯示。
+ * 各階段顯示的說明條目：只在使用者可以按主按鈕繼續允許的階段（尚未允許、需要手動開啟）顯示完整四點，
+ * 責任使用條文因此一定出現在允許之前；其他階段不顯示說明條目。
  */
 fun permissionPoints(stage: PermissionStage): List<PermissionPoint> = when (stage) {
-    PermissionStage.NOT_GRANTED, PermissionStage.NEEDS_MANUAL, PermissionStage.GRANTED -> PermissionPoint.entries
-    else -> listOf(PermissionPoint.RESPONSIBLE_USE)
+    PermissionStage.NOT_GRANTED, PermissionStage.NEEDS_MANUAL -> PermissionPoint.entries
+    else -> emptyList()
 }
 
 fun showsResponsibleUse(stage: PermissionStage): Boolean = PermissionPoint.RESPONSIBLE_USE in permissionPoints(stage)
+
+/** 授權頁底部的主要動作；[requestsPermission] 為 true 的動作會跳出系統的允許視窗。 */
+enum class PermissionBottomAction(val requestsPermission: Boolean = false) {
+    RECHECK,
+    INSTALL,
+    UPDATE,
+    BACK,
+    REQUEST(requestsPermission = true),
+    REQUEST_AGAIN(requestsPermission = true),
+    BACK_TO_SIMULATOR,
+}
+
+/** 各階段的主要動作；null 代表不顯示（檢查中）。不支援時沒有可做的事，只能返回。 */
+fun permissionBottomAction(stage: PermissionStage): PermissionBottomAction? = when (stage) {
+    PermissionStage.CHECKING -> null
+    PermissionStage.CHECK_FAILED -> PermissionBottomAction.RECHECK
+    PermissionStage.NEEDS_INSTALL -> PermissionBottomAction.INSTALL
+    PermissionStage.NEEDS_UPDATE -> PermissionBottomAction.UPDATE
+    PermissionStage.NOT_SUPPORTED -> PermissionBottomAction.BACK
+    PermissionStage.NOT_GRANTED -> PermissionBottomAction.REQUEST
+    PermissionStage.NEEDS_MANUAL -> PermissionBottomAction.REQUEST_AGAIN
+    PermissionStage.GRANTED -> PermissionBottomAction.BACK_TO_SIMULATOR
+}
 
 data class PermissionUiState(
     val availability: HealthConnectAvailability = HealthConnectAvailability.NOT_SUPPORTED,
