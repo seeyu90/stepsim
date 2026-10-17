@@ -16,12 +16,47 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
+/** 授權頁要顯示的階段；由 [PermissionUiState.stage] 決定。 */
+enum class PermissionStage {
+    CHECKING,
+    CHECK_FAILED,
+    NEEDS_INSTALL,
+    NEEDS_UPDATE,
+    NOT_SUPPORTED,
+    NOT_GRANTED,
+
+    /**
+     * 請求後仍未授權。程式分不出「使用者這次拒絕」與「系統不再跳出視窗」，
+     * 所以同時提供再試一次與手動開啟的步驟，文案不得斷言系統沒有跳出視窗。
+     */
+    NEEDS_MANUAL,
+    GRANTED,
+}
+
 data class PermissionUiState(
     val availability: HealthConnectAvailability = HealthConnectAvailability.NOT_SUPPORTED,
     val granted: Boolean = false,
     val checked: Boolean = false,
     val refreshFailed: Boolean = false,
-)
+    /** 本次進入授權頁後，曾請求權限且結果仍未授權。重新檢查時保留，取得授權後清掉。 */
+    val deniedAfterRequest: Boolean = false,
+) {
+    val stage: PermissionStage
+        get() = when {
+            refreshFailed -> PermissionStage.CHECK_FAILED
+            !checked -> PermissionStage.CHECKING
+            availability == HealthConnectAvailability.NEEDS_INSTALL -> PermissionStage.NEEDS_INSTALL
+            availability == HealthConnectAvailability.NEEDS_UPDATE -> PermissionStage.NEEDS_UPDATE
+            availability == HealthConnectAvailability.NOT_SUPPORTED -> PermissionStage.NOT_SUPPORTED
+            granted -> PermissionStage.GRANTED
+            deniedAfterRequest -> PermissionStage.NEEDS_MANUAL
+            else -> PermissionStage.NOT_GRANTED
+        }
+
+    /** 可以（再次）跳出系統授權視窗。 */
+    val canRequest: Boolean
+        get() = stage == PermissionStage.NOT_GRANTED || stage == PermissionStage.NEEDS_MANUAL
+}
 
 class PermissionViewModel(private val manager: HealthConnectManager) : ViewModel() {
 
@@ -38,6 +73,17 @@ class PermissionViewModel(private val manager: HealthConnectManager) : ViewModel
 
     private var refreshJob: Job? = null
 
+    /**
+     * 系統授權視窗的結果。沒有取得全部權限時記下「請求後仍未授權」，畫面改為提供再試一次與手動開啟；
+     * 不再自動跳轉 Health Connect 設定頁。之後一律以重新檢查的結果為準。
+     */
+    fun onPermissionResult(granted: Set<String>) {
+        if (!granted.containsAll(permissions)) {
+            _state.value = _state.value.copy(deniedAfterRequest = true)
+        }
+        refresh()
+    }
+
     /** 重新查詢可用性與授權狀態（onResume、授權結果回來後都會呼叫）；新的呼叫會取消尚未完成的前一次。 */
     fun refresh() {
         refreshJob?.cancel()
@@ -46,7 +92,13 @@ class PermissionViewModel(private val manager: HealthConnectManager) : ViewModel
                 val availability = manager.availability()
                 val granted = availability == HealthConnectAvailability.AVAILABLE &&
                     manager.hasAllPermissions()
-                _state.value = PermissionUiState(availability, granted, checked = true)
+                _state.value = PermissionUiState(
+                    availability,
+                    granted,
+                    checked = true,
+                    // 重新檢查不會讓「請求後仍未授權」消失；取得授權後才清掉
+                    deniedAfterRequest = _state.value.deniedAfterRequest && !granted,
+                )
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
