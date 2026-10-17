@@ -202,6 +202,45 @@ class SimulatorActionsTest {
         assertTrue(ui(SimulationStatus.PAUSED).hasStarted)
     }
 
+    @Test
+    fun `failure card is shown for every failed state even when a notice replaces the main content`() {
+        val values = listOf(null, true, false)
+        for (status in listOf(SimulationStatus.FAILED, SimulationStatus.PERMISSION_REVOKED)) {
+            for (granted in values) for (available in values) for (checkFailed in listOf(false, true)) {
+                val state = ui(status, granted = granted, available = available, failure = IOException(), checkFailed = checkFailed)
+                val label = "status=$status granted=$granted available=$available notice=${state.accessNotice}"
+                assertTrue(label, state.showFailureCard)
+                assertNotNull(label, state.failureMessage)
+                // 失敗卡片已說明原因，不再重複顯示提示卡
+                assertFalse(label, state.showAccessNoticeCard)
+            }
+        }
+    }
+
+    @Test
+    fun `failure message explains a denied permission or unavailable health connect`() {
+        val denied = ui(SimulationStatus.PERMISSION_REVOKED, granted = false, failure = StepWritePermissionException())
+        assertFalse(denied.showMainContent)
+        assertEquals(FailureMessage.PERMISSION_UNCONFIRMED, denied.failureMessage)
+        assertEquals(BottomAction.GO_ALLOW, denied.bottomAction)
+
+        val unavailable = ui(SimulationStatus.PERMISSION_REVOKED, granted = false, available = false, failure = StepWritePermissionException())
+        assertEquals(FailureMessage.HEALTH_CONNECT_UNAVAILABLE, unavailable.failureMessage)
+
+        val failedThenDenied = ui(SimulationStatus.FAILED, granted = false, failure = IOException("disk"))
+        assertFalse(failedThenDenied.showMainContent)
+        assertEquals("the original reason stays", FailureMessage.IO, failedThenDenied.failureMessage)
+    }
+
+    @Test
+    fun `no failure card and a notice card outside failures`() {
+        for (status in listOf(SimulationStatus.READY, SimulationStatus.RUNNING, SimulationStatus.PAUSED, SimulationStatus.COMPLETED)) {
+            val state = ui(status, granted = false, input = "5000")
+            assertFalse("status=$status", state.showFailureCard)
+            assertTrue("status=$status", state.showAccessNoticeCard)
+        }
+    }
+
     // ---- 一般狀態 ----
 
     @Test

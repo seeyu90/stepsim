@@ -56,6 +56,27 @@ data class SimulatorUiState(
 
     val showMainContent: Boolean get() = accessNotice == AccessNotice.NONE
 
+    /**
+     * 失敗卡片的主訊息；失敗狀態（FAILED、PERMISSION_REVOKED）一定有值，其他狀態為 null。
+     * [failureMessageFor] 在「權限確認未允許」時回傳 null（原本交給權限提示處理）；這裡補上對應的訊息，
+     * 讓失敗卡片（含批次編號與詳細資訊）不會被權限提示蓋掉。
+     */
+    val failureMessage: FailureMessage?
+        get() {
+            if (!isFailed) return null
+            return failureMessageFor(status, simulation.failure, permissionGranted, healthConnectAvailable)
+                ?: if (healthConnectAvailable == false) FailureMessage.HEALTH_CONNECT_UNAVAILABLE else FailureMessage.PERMISSION_UNCONFIRMED
+        }
+
+    /** 失敗時一律顯示失敗卡片，不論有沒有存取提示。 */
+    val showFailureCard: Boolean get() = failureMessage != null
+
+    /**
+     * 存取提示卡（檢查中、檢查失敗、尚未允許、Health Connect 不可用）。失敗時由失敗卡片說明原因，
+     * 不再重複顯示提示卡；底部主按鈕（前往允許、前往確認）照常保留。
+     */
+    val showAccessNoticeCard: Boolean get() = !showMainContent && !showFailureCard
+
     /** 模擬進行中（含暫停、失敗）但前景服務無法啟動時，提示「無法在背景執行」。狀態範圍與前景服務一致。 */
     val showBackgroundUnavailable: Boolean
         get() = !backgroundAvailable && shouldRunForeground(status)

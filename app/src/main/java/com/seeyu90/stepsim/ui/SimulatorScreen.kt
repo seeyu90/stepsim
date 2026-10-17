@@ -154,7 +154,9 @@ fun SimulatorScreen(
             Header()
             when {
                 state.showMainContent -> MainContent(state, locale, onEvent)
-                else -> AccessContent(state)
+                // 失敗時主要內容被提示取代，仍顯示失敗卡片（原因、批次編號、詳細資訊）
+                state.showFailureCard -> FailureCard(state)
+                state.showAccessNoticeCard -> AccessContent(state)
             }
             SecondaryActions(state, onEvent, onEnd = { confirmEnd = true })
             Tips(state)
@@ -322,12 +324,7 @@ private fun StatusBlock(@DrawableRes icon: Int, title: String, detail: String) {
 @Composable
 private fun FailureCard(state: SimulatorUiState) {
     val failure = state.simulation.failure
-    val message = failureMessageFor(
-        status = state.status,
-        failure = failure,
-        permissionGranted = state.permissionGranted,
-        healthConnectAvailable = state.healthConnectAvailable,
-    ) ?: return
+    val message = state.failureMessage ?: return
     ErrorCard(
         label = stringResource(R.string.status_failed),
         title = stringResource(R.string.err_generic_title),

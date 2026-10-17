@@ -114,6 +114,9 @@ private object PreviewStates {
     /** 完成後權限被撤銷：主要內容被提示取代，次要操作仍有「再模擬一次」。 */
     val completedPermissionDenied = completed.copy(permissionGranted = false)
 
+    /** 寫入失敗後重新檢查發現沒有權限：失敗卡片仍在，底部是前往允許。 */
+    val failedPermissionDenied = writeFailed.copy(permissionGranted = false)
+
     val checking = SimulatorUiState()
 
     /** 壓力測試：目標 100,000、已存入 99,999。 */
@@ -192,6 +195,10 @@ private fun BackgroundUnavailablePreview() = PreviewFrame(PreviewStates.backgrou
 @Preview(name = "17 完成 · 權限被撤銷", showBackground = true, heightDp = 1100)
 @Composable
 private fun CompletedPermissionDeniedPreview() = PreviewFrame(PreviewStates.completedPermissionDenied)
+
+@Preview(name = "18 失敗 · 之後發現沒有權限", showBackground = true, heightDp = 1100)
+@Composable
+private fun FailedPermissionDeniedPreview() = PreviewFrame(PreviewStates.failedPermissionDenied)
 
 @Preview(name = "16 檢查中", showBackground = true, heightDp = 1100)
 @Composable
